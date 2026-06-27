@@ -1,12 +1,37 @@
 "use server";
 
 import { revalidateTag } from "next/cache";
+import { redirect } from "next/navigation";
 import { requireUser } from "@/server/auth";
 import { rateLimit } from "@/server/rate-limit";
 import { analyzeVapiTranscript } from "@/server/ai/evaluate";
 import { saveInterview } from "@/server/storage";
-import { evaluateInputSchema, firstIssue } from "@/lib/validation/interview";
+import { clearDraft, saveDraft } from "@/server/interview-draft";
+import { evaluateInputSchema, firstIssue, interviewConfigSchema } from "@/lib/validation/interview";
 import type { TranscriptEntry, VapiAnalysisResult, VapiInterviewConfig } from "@/types/interview";
+
+export type SaveSetupDraftResult = { ok: false; error: string };
+
+/**
+ * Persist the setup config as an httpOnly draft cookie, then redirect to the
+ * matching interview route. Replaces the legacy `location.state` handoff.
+ * On success it redirects (no return); on invalid input it returns an error.
+ */
+export async function saveSetupDraft(
+  config: VapiInterviewConfig,
+): Promise<SaveSetupDraftResult | void> {
+  await requireUser();
+
+  const parsed = interviewConfigSchema.safeParse(config);
+  if (!parsed.success) {
+    return { ok: false, error: firstIssue(parsed.error) };
+  }
+
+  await saveDraft(parsed.data);
+
+  // redirect() throws — keep it outside any try/catch.
+  redirect(parsed.data.questionType === "technical" ? "/technical-interview" : "/interview/voice");
+}
 
 export type EvaluateInterviewResult =
   | { ok: true; id: string; result: VapiAnalysisResult }
@@ -52,6 +77,10 @@ export async function evaluateInterview(
       success: true,
       questionCount: result.questionBreakdown.length || undefined,
     });
+
+    // The interview is complete — consume its setup draft so a refresh of the
+    // interview route doesn't replay the same config.
+    await clearDraft();
 
     revalidateTag(`interviews:${user.id}`, "max");
     revalidateTag(`dashboard:${user.id}`, "max");

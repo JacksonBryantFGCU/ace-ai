@@ -12,7 +12,23 @@ export const publicEnv = {
   siteUrl: process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000",
   supabaseUrl: process.env.NEXT_PUBLIC_SUPABASE_URL ?? "",
   supabaseAnonKey: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? "",
+  vapiPublicKey: process.env.NEXT_PUBLIC_VAPI_PUBLIC_KEY ?? "",
 } as const;
+
+/**
+ * Returns the Vapi public key, throwing if missing. Called lazily when the Vapi
+ * singleton is first constructed (browser only), so `next build` doesn't require
+ * it. The Vapi *public* key is safe to expose — it's `NEXT_PUBLIC_*` by design.
+ */
+export function getVapiPublicKey(): string {
+  const { vapiPublicKey } = publicEnv;
+  if (!vapiPublicKey) {
+    throw new Error(
+      "Missing Vapi public key. Set NEXT_PUBLIC_VAPI_PUBLIC_KEY (see .env.example).",
+    );
+  }
+  return vapiPublicKey;
+}
 
 /**
  * Returns the Supabase URL + anon key, throwing a clear error if either is
