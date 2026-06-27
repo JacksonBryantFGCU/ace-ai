@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import type { ReactNode } from "react";
+import { requireUser } from "@/server/auth";
 
 // Private surface — keep out of search indexes.
 export const metadata: Metadata = {
@@ -8,10 +9,10 @@ export const metadata: Metadata = {
 
 /**
  * Distraction-free, full-height chrome for live interviews. No navbar — the
- * client island owns the screen.
- *
- * TODO(auth): `requireUser()` gate here (Phase 1), same as the (app) group.
+ * client island owns the screen. `requireUser()` is the server-side gate
+ * (defense-in-depth behind the proxy).
  */
-export default function InterviewLayout({ children }: { children: ReactNode }) {
+export default async function InterviewLayout({ children }: { children: ReactNode }) {
+  await requireUser();
   return <div className="flex h-dvh flex-col">{children}</div>;
 }

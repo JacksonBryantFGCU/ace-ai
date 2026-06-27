@@ -1,17 +1,31 @@
 import type { Metadata } from "next";
+import { redirectIfAuthenticated } from "@/server/auth";
+import { safeNext } from "@/lib/auth-redirects";
+import { SignupForm } from "@/components/auth/signup-form";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 
 export const metadata: Metadata = {
   title: "Sign up",
+  robots: { index: false, follow: false },
 };
 
-export default function SignupPage() {
+export default async function SignupPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ next?: string }>;
+}) {
+  const { next } = await searchParams;
+  await redirectIfAuthenticated(safeNext(next));
+
   return (
-    <div className="space-y-2">
-      <h1 className="text-2xl font-semibold tracking-tight">Sign up</h1>
-      <p className="text-muted-foreground text-sm">
-        {/* TODO(auth): AuthForm client island (Supabase) lands in Phase 1. */}
-        Authentication is wired up in a later phase.
-      </p>
-    </div>
+    <Card>
+      <CardHeader>
+        <CardTitle className="text-xl">Create your account</CardTitle>
+        <CardDescription>Start practicing engineering interviews with ACE.AI.</CardDescription>
+      </CardHeader>
+      <CardContent>
+        <SignupForm next={next} />
+      </CardContent>
+    </Card>
   );
 }
