@@ -2,12 +2,18 @@ import "server-only";
 
 import { cache } from "react";
 import { createClient } from "@/server/db/server-client";
+import { createAdminClient } from "@/server/db/admin";
 import type {
   InterviewDetailRow,
   InterviewListItem,
   InterviewListRow,
   SavedInterview,
 } from "@/types/db";
+import type {
+  TranscriptEntry,
+  VapiAnalysisResult,
+  VapiInterviewConfig,
+} from "@/types/interview";
 
 /**
  * Server-side interview read layer. All access goes through the request-scoped
@@ -34,6 +40,63 @@ function toListItem(row: InterviewListRow): InterviewListItem {
 
 function toSavedInterview(row: InterviewDetailRow): SavedInterview {
   return { ...row, date: row.created_at };
+}
+
+/** Metrics columns written alongside an interview (ported from `storageService`). */
+export interface InterviewMetrics {
+  startedAt?: number | string;
+  completedAt?: number | string;
+  durationMs?: number;
+  questionCount?: number;
+  success?: boolean;
+  error?: string;
+}
+
+/** Strip paths/long stacks so the dashboard never surfaces raw internals. */
+function sanitizeError(message: string | undefined): string | undefined {
+  if (!message) return undefined;
+  return message.split("\n")[0]!.slice(0, 300);
+}
+
+/**
+ * Persist a completed interview. Uses the **admin client** (bypasses RLS), so
+ * the caller must have authenticated the user first and pass their `userId`.
+ */
+export async function saveInterview(
+  userId: string,
+  config: VapiInterviewConfig,
+  result: VapiAnalysisResult,
+  transcript: TranscriptEntry[] = [],
+  metrics: InterviewMetrics = {},
+): Promise<{ id: string }> {
+  const row: Record<string, unknown> = {
+    user_id: userId,
+    role: config.role,
+    question_type: config.questionType,
+    config,
+    result,
+    transcript,
+  };
+
+  if (metrics.startedAt !== undefined) row.started_at = new Date(metrics.startedAt).toISOString();
+  if (metrics.completedAt !== undefined) {
+    row.completed_at = new Date(metrics.completedAt).toISOString();
+  }
+  if (typeof metrics.durationMs === "number") row.duration_ms = metrics.durationMs;
+  if (typeof metrics.questionCount === "number") row.question_count = metrics.questionCount;
+  if (typeof metrics.success === "boolean") row.success = metrics.success;
+  const safeError = sanitizeError(metrics.error);
+  if (safeError) row.error = safeError;
+
+  const admin = createAdminClient();
+  const { data, error } = await admin.from("interviews").insert(row).select("id").single();
+
+  if (error || !data) {
+    console.error("saveInterview failed:", error?.message);
+    throw new Error("Failed to save interview");
+  }
+
+  return { id: (data as { id: string }).id };
 }
 
 /** All of a user's interviews, newest first. */

@@ -16,7 +16,7 @@ import type {
 
 export const DIFFICULTIES: readonly Difficulty[] = ["easy", "medium", "hard"];
 
-export const EXPERIENCE_LEVELS: readonly ExperienceLevel[] = ["junior", "mid", "senior", "staff"];
+export const EXPERIENCE_LEVELS: readonly ExperienceLevel[] = ["junior", "mid", "senior"];
 
 export const STRICTNESS_LEVELS: readonly Strictness[] = ["lenient", "balanced", "strict"];
 
@@ -30,6 +30,20 @@ export const PROGRAMMING_LANGUAGES: readonly ProgrammingLanguage[] = [
   "cpp",
   "bash",
 ];
+
+/** Engineering roles allowed for setup config and profile role (ported allow-list). */
+export const VALID_ROLES = [
+  "frontend",
+  "backend",
+  "fullstack",
+  "ml",
+  "mobile",
+  "devops",
+  "security",
+  "systems",
+] as const;
+
+export type EngineerRole = (typeof VALID_ROLES)[number];
 
 /** Interviewer personas. Placeholder — port the real roster (name/voice/personality). */
 export interface Interviewer {

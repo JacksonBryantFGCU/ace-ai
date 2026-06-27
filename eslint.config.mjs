@@ -15,6 +15,8 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // Legacy backend kept only as porting reference — not part of the app.
+    "reference/**",
   ]),
 ]);
 

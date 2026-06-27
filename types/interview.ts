@@ -9,7 +9,7 @@
 
 export type Difficulty = "easy" | "medium" | "hard";
 
-export type ExperienceLevel = "junior" | "mid" | "senior" | "staff";
+export type ExperienceLevel = "junior" | "mid" | "senior";
 
 /** Evaluation strictness; higher = harsher scoring. */
 export type Strictness = "lenient" | "balanced" | "strict";
@@ -40,16 +40,32 @@ export interface TranscriptEntry {
   timestamp?: number;
 }
 
-/** Result of scoring a transcript with OpenAI. */
+/** One scored question/answer pair from an evaluation. */
+export interface QuestionBreakdown {
+  question: string;
+  candidateAnswer: string;
+  score: number;
+  feedback: string;
+}
+
+/**
+ * Result of scoring a transcript with OpenAI. Shape matches the ported
+ * evaluation contract: a set of fixed score dimensions plus a per-question
+ * breakdown.
+ */
 export interface VapiAnalysisResult {
   /** Overall score, 0–100. */
   score: number;
-  /** Per-dimension scores (e.g. communication, technical depth). */
-  breakdown: Record<string, number>;
+  /** Clarity, articulation, conciseness (0–100). */
+  communication: number;
+  /** Correctness of technical content (0–100). */
+  technicalAccuracy: number;
+  /** Logical thinking and approach (0–100). */
+  problemSolving: number;
   strengths: string[];
   improvements: string[];
   nextSteps: string[];
-  summary?: string;
+  questionBreakdown: QuestionBreakdown[];
 }
 
 /** A single test case for a coding problem. */

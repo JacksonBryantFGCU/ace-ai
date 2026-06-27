@@ -23,3 +23,18 @@ export function requireServerEnv(key: string): string {
 export function optionalServerEnv(key: string): string | undefined {
   return process.env[key];
 }
+
+/** Supabase service-role key — bypasses RLS. Server-only; never expose to the client. */
+export function getServiceRoleKey(): string {
+  return requireServerEnv("SUPABASE_SERVICE_ROLE_KEY");
+}
+
+/** OpenAI API key. */
+export function getOpenAIKey(): string {
+  return requireServerEnv("OPENAI_API_KEY");
+}
+
+/** OpenAI model, defaulting to the model the original backend used. */
+export function getOpenAIModel(): string {
+  return optionalServerEnv("OPENAI_MODEL") ?? "gpt-4o-mini";
+}
