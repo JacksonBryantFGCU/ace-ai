@@ -17,7 +17,7 @@ const transcriptEntrySchema = z.object({
 export const interviewConfigSchema = z.object({
   role: z.string().min(1),
   difficulty: z.enum(["easy", "medium", "hard"]),
-  experience: z.enum(["junior", "mid", "senior"]),
+  experience: z.enum(["intern", "entry", "junior", "senior"]),
   strictness: z.enum(["lenient", "balanced", "strict"]),
   questionType: z.enum(["behavioral", "technical"]),
   interviewer: z.string().min(1),

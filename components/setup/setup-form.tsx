@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState, useTransition } from "react";
-import { Volume2 } from "lucide-react";
+import { ChevronDown } from "lucide-react";
 import { saveSetupDraft } from "@/actions/interview";
 import { getVapi, unlockAudio, type VapiAssistantConfig } from "@/lib/vapi";
 import {
@@ -9,13 +9,17 @@ import {
   EXPERIENCE_LEVELS,
   INTERVIEWERS,
   QUESTION_TYPES,
+  ROLE_LABELS,
   STRICTNESS_LEVELS,
   VALID_ROLES,
   getInterviewer,
+  type EngineerRole,
 } from "@/lib/constants";
 import { titleCase } from "@/lib/format";
+import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
-import { Label } from "@/components/ui/label";
+import { StopSlider } from "@/components/setup/stop-slider";
+import { InterviewerCard } from "@/components/setup/interviewer-card";
 import type {
   Difficulty,
   ExperienceLevel,
@@ -24,55 +28,19 @@ import type {
   VapiInterviewConfig,
 } from "@/types/interview";
 
-const ROLE_LABELS: Record<string, string> = {
-  frontend: "Frontend Engineer",
-  backend: "Backend Engineer",
-  fullstack: "Full-Stack Engineer",
-  ml: "Machine Learning Engineer",
-  mobile: "Mobile Developer",
-  devops: "DevOps Engineer",
-  security: "Cybersecurity Engineer",
-  systems: "Systems Engineer",
+/** Legacy strictness wording (the data model uses lenient/balanced/strict). */
+const STRICTNESS_LABELS: Record<Strictness, string> = {
+  lenient: "Relaxed",
+  balanced: "Standard",
+  strict: "Strict",
 };
 
-function Segmented<T extends string>({
-  options,
-  value,
-  onChange,
-  label,
-}: {
-  options: readonly T[];
-  value: T;
-  onChange: (v: T) => void;
-  label: (v: T) => string;
-}) {
-  return (
-    <div className="flex flex-wrap gap-2">
-      {options.map((option) => (
-        <button
-          key={option}
-          type="button"
-          onClick={() => onChange(option)}
-          aria-pressed={value === option}
-          className={`rounded-full border px-4 py-1.5 text-sm font-medium transition-colors ${
-            value === option
-              ? "bg-primary text-primary-foreground border-primary"
-              : "border-border bg-background hover:bg-accent"
-          }`}
-        >
-          {label(option)}
-        </button>
-      ))}
-    </div>
-  );
-}
-
-export function SetupForm() {
-  const [role, setRole] = useState<string>("backend");
+export function SetupForm({ initialRole }: { initialRole: EngineerRole }) {
+  const [role, setRole] = useState<EngineerRole>(initialRole);
   const [questionType, setQuestionType] = useState<QuestionType>("behavioral");
   const [difficulty, setDifficulty] = useState<Difficulty>("medium");
   const [strictness, setStrictness] = useState<Strictness>("balanced");
-  const [experience, setExperience] = useState<ExperienceLevel>("mid");
+  const [experience, setExperience] = useState<ExperienceLevel>("junior");
   const [interviewerId, setInterviewerId] = useState<string>(INTERVIEWERS[0]!.id);
   const [previewingId, setPreviewingId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -179,84 +147,98 @@ export function SetupForm() {
 
   return (
     <div className="grid gap-6 lg:grid-cols-2">
-      {/* Configuration */}
-      <div className="border-border space-y-6 rounded-2xl border p-6">
-        <div className="space-y-2">
-          <Label htmlFor="role">Role</Label>
-          <select
-            id="role"
-            value={role}
-            onChange={(e) => setRole(e.target.value)}
-            className="border-border bg-background w-full rounded-md border px-3 py-2 text-sm"
-          >
-            {VALID_ROLES.map((r) => (
-              <option key={r} value={r}>
-                {ROLE_LABELS[r] ?? titleCase(r)}
-              </option>
-            ))}
-          </select>
+      {/* Configuration panel */}
+      <div className="glass-card space-y-8 p-8">
+        <div>
+          <label htmlFor="role" className="mb-3 block text-sm font-medium text-gray-700">
+            Role
+          </label>
+          <div className="relative">
+            <select
+              id="role"
+              value={role}
+              onChange={(e) => setRole(e.target.value as EngineerRole)}
+              className="w-full appearance-none rounded-xl border border-white/60 bg-white/60 py-3 pr-10 pl-4 text-gray-900 shadow-sm backdrop-blur-sm focus:border-blue-400 focus:ring-2 focus:ring-blue-400/20 focus:outline-none"
+            >
+              {VALID_ROLES.map((r) => (
+                <option key={r} value={r}>
+                  {ROLE_LABELS[r] ?? titleCase(r)}
+                </option>
+              ))}
+            </select>
+            <ChevronDown className="pointer-events-none absolute top-1/2 right-4 size-4 -translate-y-1/2 text-gray-500" />
+          </div>
         </div>
 
-        <div className="space-y-2">
-          <Label>Question type</Label>
-          <Segmented
-            options={QUESTION_TYPES}
-            value={questionType}
-            onChange={setQuestionType}
-            label={titleCase}
-          />
+        <div>
+          <p className="mb-3 text-sm font-medium text-gray-700">Question Type</p>
+          <div className="flex gap-2">
+            {QUESTION_TYPES.map((type) => (
+              <button
+                key={type}
+                type="button"
+                onClick={() => setQuestionType(type)}
+                aria-pressed={questionType === type}
+                className={cn(
+                  "flex-1 rounded-full px-4 py-2 text-sm font-medium transition-all",
+                  questionType === type
+                    ? "bg-gradient-to-r from-blue-500 to-blue-600 text-white shadow-lg"
+                    : "bg-white/60 text-gray-700 hover:bg-white/80",
+                )}
+              >
+                {titleCase(type)}
+              </button>
+            ))}
+          </div>
           {questionType === "technical" ? (
-            <p className="text-muted-foreground text-xs">
+            <p className="mt-2 text-xs text-gray-500">
               Technical interviews (coding problems) arrive in a later phase.
             </p>
           ) : null}
         </div>
 
-        <div className="space-y-2">
-          <Label>Difficulty</Label>
-          <Segmented
-            options={DIFFICULTIES}
-            value={difficulty}
-            onChange={setDifficulty}
-            label={titleCase}
-          />
-        </div>
+        <StopSlider
+          label="Question Difficulty"
+          options={DIFFICULTIES}
+          value={difficulty}
+          onChange={setDifficulty}
+          optionLabel={titleCase}
+        />
 
-        <div className="space-y-2">
-          <Label>Interviewer strictness</Label>
-          <Segmented
-            options={STRICTNESS_LEVELS}
-            value={strictness}
-            onChange={setStrictness}
-            label={titleCase}
-          />
-        </div>
+        <StopSlider
+          label="Interviewer Strictness"
+          options={STRICTNESS_LEVELS}
+          value={strictness}
+          onChange={setStrictness}
+          optionLabel={(v) => STRICTNESS_LABELS[v]}
+        />
 
-        <div className="space-y-2">
-          <Label>Experience level</Label>
-          <Segmented
-            options={EXPERIENCE_LEVELS}
-            value={experience}
-            onChange={setExperience}
-            label={titleCase}
-          />
-        </div>
+        <StopSlider
+          label="Experience Level"
+          options={EXPERIENCE_LEVELS}
+          value={experience}
+          onChange={setExperience}
+          optionLabel={titleCase}
+        />
       </div>
 
-      {/* Interviewer */}
+      {/* Interviewer panel */}
       <div className="space-y-6">
-        <div className="border-border rounded-2xl border p-6">
-          <h2 className="mb-6 text-lg font-semibold">Your interviewer</h2>
+        <div className="glass-card p-8">
+          <h2 className="mb-6 text-lg font-semibold text-gray-900">Your Interviewer</h2>
 
           <div className="mb-6 flex justify-center">
             <div
-              className={`flex h-28 w-28 items-center justify-center rounded-full bg-gradient-to-br ${interviewer.gradient}`}
+              className={cn(
+                "flex size-32 items-center justify-center rounded-full bg-gradient-to-br shadow-lg",
+                interviewer.gradient,
+              )}
             >
               <span className="text-4xl font-bold text-white">{interviewer.name.charAt(0)}</span>
             </div>
           </div>
 
-          <h3 className="mb-4 text-center text-xl font-bold">{interviewer.name}</h3>
+          <h3 className="mb-6 text-center text-2xl font-bold text-gray-900">{interviewer.name}</h3>
 
           <div className="mb-5 flex justify-center gap-3">
             {INTERVIEWERS.map((option) => (
@@ -266,39 +248,37 @@ export function SetupForm() {
                 onClick={() => setInterviewerId(option.id)}
                 aria-label={option.name}
                 aria-pressed={interviewerId === option.id}
-                className={`h-12 w-12 rounded-full bg-gradient-to-br ${option.gradient} transition-all ${
+                className={cn(
+                  "size-12 rounded-full bg-gradient-to-br transition-all",
+                  option.gradient,
                   interviewerId === option.id
-                    ? "ring-primary scale-110 ring-4"
-                    : "opacity-50 hover:opacity-100"
-                }`}
+                    ? "scale-110 ring-4 ring-blue-500"
+                    : "opacity-50 hover:opacity-100",
+                )}
               />
             ))}
           </div>
 
-          <p className="text-muted-foreground mb-4 text-center text-sm">{interviewer.personality}</p>
-
-          <div className="flex justify-center">
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={() => void previewVoice(interviewer.id)}
-              className="gap-2"
-            >
-              <Volume2 className="h-4 w-4" />
-              {previewingId === interviewer.id ? "Previewing…" : "Preview voice"}
-            </Button>
-          </div>
+          <InterviewerCard
+            interviewerId={interviewer.id}
+            isPreviewing={previewingId === interviewer.id}
+            onPreviewVoice={() => void previewVoice(interviewer.id)}
+          />
         </div>
 
         {error ? (
-          <p className="text-sm text-red-500 dark:text-red-400" role="alert">
+          <p className="text-sm text-red-600" role="alert">
             {error}
           </p>
         ) : null}
 
-        <Button size="lg" className="w-full" onClick={handleStart} disabled={pending}>
-          {pending ? "Starting…" : "Start interview"}
+        <Button
+          variant="brand"
+          onClick={handleStart}
+          disabled={pending}
+          className="h-14 w-full rounded-xl text-base"
+        >
+          {pending ? "Starting…" : "Start Interview"}
         </Button>
       </div>
     </div>

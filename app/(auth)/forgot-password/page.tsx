@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { redirectIfAuthenticated } from "@/server/auth";
 import { ForgotPasswordForm } from "@/components/auth/forgot-password-form";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { AuthCard } from "@/components/auth/auth-card";
 
 export const metadata: Metadata = {
   title: "Reset password",
@@ -12,14 +12,8 @@ export default async function ForgotPasswordPage() {
   await redirectIfAuthenticated();
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="text-xl">Reset your password</CardTitle>
-        <CardDescription>Enter your email and we&apos;ll send you a reset link.</CardDescription>
-      </CardHeader>
-      <CardContent>
-        <ForgotPasswordForm />
-      </CardContent>
-    </Card>
+    <AuthCard title="Reset your password" subtitle="Enter your email and we'll send you a reset link">
+      <ForgotPasswordForm />
+    </AuthCard>
   );
 }

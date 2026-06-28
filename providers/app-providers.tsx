@@ -1,17 +1,12 @@
-"use client";
-
 import type { ReactNode } from "react";
-import { ThemeProvider } from "@/providers/theme-provider";
 
 /**
- * Single mount point for cross-cutting client providers (theme today; toasts,
- * tooltips, etc. later). Kept intentionally minimal — the app has no global
- * store; server data + local state cover most needs.
+ * Single mount point for cross-cutting providers. Intentionally a passthrough:
+ * the restored design uses **fixed per-surface themes** (light pastel for
+ * marketing/app, dark slate for the interview/replay experience) rather than a
+ * user-toggled light/dark mode, so there is no theme provider. Add toasts,
+ * tooltips, etc. here if needed later.
  */
 export function AppProviders({ children }: { children: ReactNode }) {
-  return (
-    <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
-      {children}
-    </ThemeProvider>
-  );
+  return <>{children}</>;
 }

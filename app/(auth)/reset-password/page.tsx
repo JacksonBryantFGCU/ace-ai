@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { getUser } from "@/server/auth";
 import { ResetPasswordForm } from "@/components/auth/reset-password-form";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { AuthCard } from "@/components/auth/auth-card";
 
 export const metadata: Metadata = {
   title: "Set new password",
@@ -18,14 +18,8 @@ export default async function ResetPasswordPage() {
   }
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="text-xl">Set a new password</CardTitle>
-        <CardDescription>Choose a new password for your account.</CardDescription>
-      </CardHeader>
-      <CardContent>
-        <ResetPasswordForm />
-      </CardContent>
-    </Card>
+    <AuthCard title="Set a new password" subtitle="Choose a new password for your account">
+      <ResetPasswordForm />
+    </AuthCard>
   );
 }

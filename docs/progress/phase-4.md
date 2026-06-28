@@ -7,6 +7,11 @@
 
 External setup: [`docs/setup/vapi.md`](../setup/vapi.md).
 
+> **Follow-up:** the full UI was subsequently restyled to the legacy ACE.AI
+> design (branded navbar, hero home, glass cards, dark interview/replay, the
+> Practice flow Home → Roles → Setup → Voice → Results, and Setup-page polish).
+> See [`design-restoration.md`](./design-restoration.md).
+
 ---
 
 ## 1. What was implemented

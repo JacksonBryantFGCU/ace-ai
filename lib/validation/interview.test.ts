@@ -5,7 +5,7 @@ import type { VapiInterviewConfig } from "@/types/interview";
 const validConfig: VapiInterviewConfig = {
   role: "frontend",
   difficulty: "medium",
-  experience: "mid",
+  experience: "junior",
   strictness: "balanced",
   questionType: "behavioral",
   interviewer: "default",

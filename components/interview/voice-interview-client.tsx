@@ -10,6 +10,8 @@ import { getInterviewer } from "@/lib/constants";
 import { titleCase } from "@/lib/format";
 import { MicVisualizer } from "@/components/interview/mic-visualizer";
 import { KeyboardShortcutsHelp } from "@/components/interview/keyboard-shortcuts-help";
+import { SettingChip, type ChipTone } from "@/components/interview/setting-chip";
+import { ROLE_LABELS } from "@/lib/constants";
 import { Button } from "@/components/ui/button";
 import type { Difficulty, VapiInterviewConfig } from "@/types/interview";
 
@@ -39,7 +41,7 @@ export function VoiceInterviewClient({ config }: { config: VapiInterviewConfig }
   } = useVapiInterview();
 
   const interviewer = getInterviewer(config.interviewer);
-  const roleLabel = titleCase(config.role);
+  const roleLabel = ROLE_LABELS[config.role] ?? titleCase(config.role);
   const totalTime = INTERVIEW_TIMER[config.difficulty] ?? 1500;
   const [timeLeft, setTimeLeft] = useState(totalTime);
 
@@ -217,21 +219,21 @@ export function VoiceInterviewClient({ config }: { config: VapiInterviewConfig }
         ? "5 minutes remaining"
         : null;
 
-  const chips = [
-    roleLabel,
-    titleCase(config.questionType),
-    `${titleCase(config.difficulty)} difficulty`,
-    titleCase(config.experience),
-    `${titleCase(config.strictness)} strictness`,
+  const chips: { label: string; tone: ChipTone }[] = [
+    { label: roleLabel, tone: "purple" },
+    { label: titleCase(config.questionType), tone: "blue" },
+    { label: `${titleCase(config.difficulty)} Difficulty`, tone: "amber" },
+    { label: titleCase(config.experience), tone: "teal" },
+    { label: `${titleCase(config.strictness)} Strictness`, tone: "red" },
   ];
 
   return (
-    <div className="mx-auto w-full max-w-4xl flex-1 space-y-4 overflow-y-auto p-4 sm:p-6">
+    <div className="mx-auto w-full max-w-6xl flex-1 space-y-4 overflow-y-auto p-4 sm:p-6">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-xl font-semibold tracking-tight">{roleLabel} interview</h1>
-          <p className="text-muted-foreground text-sm">Voice assessment</p>
+          <h1 className="text-xl font-semibold tracking-tight">{roleLabel} Interview</h1>
+          <p className="text-muted-foreground text-sm">Voice Assessment</p>
         </div>
         <div className={`font-mono text-2xl tabular-nums transition-colors ${timerColor}`}>
           {formatTime(timeLeft)}
@@ -260,11 +262,11 @@ export function VoiceInterviewClient({ config }: { config: VapiInterviewConfig }
       ) : null}
 
       {/* Settings chips */}
-      <div className="flex flex-wrap gap-2 text-xs">
+      <div className="flex flex-wrap gap-2">
         {chips.map((chip) => (
-          <span key={chip} className="border-border bg-muted rounded-full border px-3 py-1">
-            {chip}
-          </span>
+          <SettingChip key={chip.label} tone={chip.tone}>
+            {chip.label}
+          </SettingChip>
         ))}
       </div>
 
@@ -352,9 +354,9 @@ export function VoiceInterviewClient({ config }: { config: VapiInterviewConfig }
                 {errorMessage}
               </p>
             ) : null}
-            <Button size="lg" onClick={handleStart} className="gap-2 rounded-full">
+            <Button size="lg" variant="brand" onClick={handleStart} className="gap-2 rounded-full px-8">
               <Mic className="h-5 w-5" />
-              Start interview
+              Start Interview
             </Button>
           </div>
         ) : status === "connecting" ? (

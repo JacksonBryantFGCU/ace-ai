@@ -16,7 +16,7 @@ import type {
 
 export const DIFFICULTIES: readonly Difficulty[] = ["easy", "medium", "hard"];
 
-export const EXPERIENCE_LEVELS: readonly ExperienceLevel[] = ["junior", "mid", "senior"];
+export const EXPERIENCE_LEVELS: readonly ExperienceLevel[] = ["intern", "entry", "junior", "senior"];
 
 export const STRICTNESS_LEVELS: readonly Strictness[] = ["lenient", "balanced", "strict"];
 
@@ -44,6 +44,66 @@ export const VALID_ROLES = [
 ] as const;
 
 export type EngineerRole = (typeof VALID_ROLES)[number];
+
+/** Display metadata for the role-selection step (ported from legacy RoleSelection). */
+export interface RoleMeta {
+  id: EngineerRole;
+  label: string;
+  description: string;
+}
+
+export const ROLE_META: readonly RoleMeta[] = [
+  {
+    id: "frontend",
+    label: "Frontend Engineer",
+    description: "Build beautiful, responsive user interfaces with React, Vue, or Angular",
+  },
+  {
+    id: "backend",
+    label: "Backend Engineer",
+    description: "Design scalable server architectures and APIs with Node.js, Python, or Java",
+  },
+  {
+    id: "fullstack",
+    label: "Full-Stack Engineer",
+    description: "Master both frontend and backend development across the entire stack",
+  },
+  {
+    id: "ml",
+    label: "Machine Learning Engineer",
+    description: "Build intelligent systems with deep learning, NLP, and computer vision",
+  },
+  {
+    id: "mobile",
+    label: "Mobile Developer",
+    description: "Create native iOS and Android apps or cross-platform solutions",
+  },
+  {
+    id: "devops",
+    label: "DevOps Engineer",
+    description: "Streamline deployment pipelines, CI/CD, and cloud infrastructure",
+  },
+  {
+    id: "security",
+    label: "Cybersecurity Engineer",
+    description: "Protect systems from threats with penetration testing and security protocols",
+  },
+  {
+    id: "systems",
+    label: "Systems Engineer",
+    description: "Optimize low-level performance with C++, Rust, and distributed systems",
+  },
+];
+
+/** Lookup map for role labels, keyed by role id. */
+export const ROLE_LABELS: Record<string, string> = Object.fromEntries(
+  ROLE_META.map((r) => [r.id, r.label]),
+);
+
+/** Narrow an arbitrary string to a known role, or undefined if not in the allow-list. */
+export function asRole(value: string | undefined): EngineerRole | undefined {
+  return VALID_ROLES.find((r) => r === value);
+}
 
 /**
  * Voice provider config for an interviewer (ported verbatim from the legacy

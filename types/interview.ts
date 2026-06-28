@@ -9,7 +9,7 @@
 
 export type Difficulty = "easy" | "medium" | "hard";
 
-export type ExperienceLevel = "junior" | "mid" | "senior";
+export type ExperienceLevel = "intern" | "entry" | "junior" | "senior";
 
 /** Evaluation strictness; higher = harsher scoring. */
 export type Strictness = "lenient" | "balanced" | "strict";

@@ -1,7 +1,8 @@
 import type { Metadata } from "next";
 import type { ReactNode } from "react";
 import { requireUser } from "@/server/auth";
-import { DashboardNavbar } from "@/components/dashboard-navbar";
+import { userDisplayName } from "@/lib/user-display";
+import { AppShell } from "@/components/app-shell";
 
 // Private surface — keep out of search indexes.
 export const metadata: Metadata = {
@@ -10,17 +11,12 @@ export const metadata: Metadata = {
 
 /**
  * Authenticated application shell. `requireUser()` is the server-side gate
- * (defense-in-depth behind the proxy); it also provides the user to the navbar.
- * The DashboardNavbar is a persistent layout — it renders once and survives
- * client navigations between child pages.
+ * (defense-in-depth behind the proxy); it also provides the display name to the
+ * navbar. The shell fixes the surface theme per route (light app pages, dark
+ * replay) and persists across client navigations between child pages.
  */
 export default async function AppLayout({ children }: { children: ReactNode }) {
   const user = await requireUser();
 
-  return (
-    <div className="flex min-h-dvh flex-col">
-      <DashboardNavbar user={user} />
-      <main className="mx-auto w-full max-w-6xl flex-1 px-4 py-8">{children}</main>
-    </div>
-  );
+  return <AppShell name={userDisplayName(user)}>{children}</AppShell>;
 }

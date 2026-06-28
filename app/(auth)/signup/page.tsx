@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { redirectIfAuthenticated } from "@/server/auth";
 import { safeNext } from "@/lib/auth-redirects";
 import { SignupForm } from "@/components/auth/signup-form";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { AuthCard } from "@/components/auth/auth-card";
 
 export const metadata: Metadata = {
   title: "Sign up",
@@ -18,14 +18,8 @@ export default async function SignupPage({
   await redirectIfAuthenticated(safeNext(next));
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="text-xl">Create your account</CardTitle>
-        <CardDescription>Start practicing engineering interviews with ACE.AI.</CardDescription>
-      </CardHeader>
-      <CardContent>
-        <SignupForm next={next} />
-      </CardContent>
-    </Card>
+    <AuthCard title="Create account" subtitle="Start practicing interviews today">
+      <SignupForm next={next} />
+    </AuthCard>
   );
 }

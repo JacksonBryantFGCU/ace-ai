@@ -51,13 +51,17 @@ Expect deep technical knowledge. Challenge weak or vague answers. Ask multiple f
 }
 
 function experienceInstructions(experience: ExperienceLevel): string {
+  if (experience === "intern") {
+    return `The candidate's experience level is intern (very early career).
+Be patient and encouraging. Use simple language and explain context where helpful. Give them plenty of time to think, and offer hints generously if they get stuck. Focus on fundamentals.`;
+  }
+  if (experience === "entry") {
+    return `The candidate's experience level is entry-level.
+Be encouraging, but expect solid fundamentals. Use approachable language. If they struggle, offer a small hint before moving on. Build their confidence as you go.`;
+  }
   if (experience === "junior") {
     return `The candidate's experience level is junior.
 Be patient and encouraging. Use simpler language. Give them time to think. If they struggle, offer a small hint before moving on. Don't overwhelm them.`;
-  }
-  if (experience === "mid") {
-    return `The candidate's experience level is mid-level.
-Be balanced. Expect solid fundamentals. After each answer, ask "why" or "how" to test deeper understanding. Acknowledge good answers.`;
   }
   return `The candidate's experience level is senior.
 Expect depth and nuance in every answer. Push back on vague responses. Ask "what are the tradeoffs?" and "how would this fail at scale?" Don't accept surface-level answers from a senior candidate.`;
