@@ -10,10 +10,17 @@ import type {
   SavedInterview,
 } from "@/types/db";
 import type {
+  QuestionType,
   TranscriptEntry,
   VapiAnalysisResult,
   VapiInterviewConfig,
 } from "@/types/interview";
+
+/** Optional history filters (Phase 6). Omitted/empty fields are no-ops. */
+export interface InterviewFilters {
+  questionType?: QuestionType;
+  role?: string;
+}
 
 /**
  * Server-side interview read layer. All access goes through the request-scoped
@@ -99,24 +106,30 @@ export async function saveInterview(
   return { id: (data as { id: string }).id };
 }
 
-/** All of a user's interviews, newest first. */
-export const getInterviews = cache(async (userId: string): Promise<InterviewListItem[]> => {
-  const supabase = await createClient();
-  const { data, error } = await supabase
-    .from("interviews")
-    .select(LIST_COLUMNS)
-    .eq("user_id", userId)
-    .order("created_at", { ascending: false });
+/**
+ * All of a user's interviews, newest first. Optional `filters` narrow by
+ * question type and/or role in-query; omitted means "all" (unchanged behaviour).
+ */
+export const getInterviews = cache(
+  async (userId: string, filters: InterviewFilters = {}): Promise<InterviewListItem[]> => {
+    const supabase = await createClient();
+    let query = supabase.from("interviews").select(LIST_COLUMNS).eq("user_id", userId);
 
-  if (error) {
-    console.error("getInterviews failed:", error.message);
-    throw new Error("Failed to load interviews");
-  }
+    if (filters.questionType) query = query.eq("question_type", filters.questionType);
+    if (filters.role) query = query.eq("role", filters.role);
 
-  // The untyped Supabase client returns a loose row shape; cast at this boundary.
-  const rows = (data ?? []) as unknown as InterviewListRow[];
-  return rows.map(toListItem);
-});
+    const { data, error } = await query.order("created_at", { ascending: false });
+
+    if (error) {
+      console.error("getInterviews failed:", error.message);
+      throw new Error("Failed to load interviews");
+    }
+
+    // The untyped Supabase client returns a loose row shape; cast at this boundary.
+    const rows = (data ?? []) as unknown as InterviewListRow[];
+    return rows.map(toListItem);
+  },
+);
 
 /**
  * A single owner-scoped interview, or `null` when it doesn't exist or isn't the

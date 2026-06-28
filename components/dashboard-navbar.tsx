@@ -9,7 +9,8 @@ import { BrandLogo } from "@/components/brand-logo";
 import { cn } from "@/lib/utils";
 
 const NAV_ITEMS = [
-  { label: "Dashboard", href: "/" },
+  { label: "Home", href: "/" },
+  { label: "Dashboard", href: "/dashboard" },
   { label: "Practice Interviews", href: "/roles" },
   { label: "Interviews", href: "/interviews" },
   { label: "Analytics", href: "/analytics" },
@@ -17,6 +18,7 @@ const NAV_ITEMS = [
 
 /** Which nav item owns a given pathname (so deep routes still light up a tab). */
 function isActive(href: string, pathname: string): boolean {
+  // Home matches the marketing root only — never the deeper app routes.
   if (href === "/") return pathname === "/";
   if (href === "/roles") {
     return ["/roles", "/setup", "/interview"].some((p) => pathname.startsWith(p));
