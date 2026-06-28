@@ -68,13 +68,22 @@ export interface VapiAnalysisResult {
   questionBreakdown: QuestionBreakdown[];
 }
 
-/** A single test case for a coding problem. */
+/** A single test case for a coding problem. `expected` is the canonical field. */
 export interface TestCase {
   input: unknown[];
   expected: unknown;
+  /** Optional human description (e.g. for example rendering). */
+  description?: string;
 }
 
-/** A coding problem presented in the technical interview. */
+/** A worked example shown alongside a coding problem. */
+export interface ProblemExample {
+  input: string;
+  output: string;
+  explanation?: string;
+}
+
+/** A coding problem presented in the technical interview (canonical shape). */
 export interface CodingProblem {
   id: string;
   title: string;
@@ -84,4 +93,6 @@ export interface CodingProblem {
   functionName: string;
   starterCode?: Partial<Record<ProgrammingLanguage, string>>;
   testCases: TestCase[];
+  examples?: ProblemExample[];
+  constraints?: string[];
 }

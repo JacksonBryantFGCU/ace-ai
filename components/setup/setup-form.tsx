@@ -11,10 +11,12 @@ import {
   QUESTION_TYPES,
   ROLE_LABELS,
   STRICTNESS_LEVELS,
+  TOPIC_CATEGORIES,
   VALID_ROLES,
   getInterviewer,
   type EngineerRole,
 } from "@/lib/constants";
+import { EXECUTABLE_LANGUAGES, LANGUAGES } from "@/lib/languages";
 import { titleCase } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -23,6 +25,7 @@ import { InterviewerCard } from "@/components/setup/interviewer-card";
 import type {
   Difficulty,
   ExperienceLevel,
+  ProgrammingLanguage,
   QuestionType,
   Strictness,
   VapiInterviewConfig,
@@ -42,6 +45,8 @@ export function SetupForm({ initialRole }: { initialRole: EngineerRole }) {
   const [strictness, setStrictness] = useState<Strictness>("balanced");
   const [experience, setExperience] = useState<ExperienceLevel>("junior");
   const [interviewerId, setInterviewerId] = useState<string>(INTERVIEWERS[0]!.id);
+  const [language, setLanguage] = useState<ProgrammingLanguage>("javascript");
+  const [topics, setTopics] = useState<string[]>([]);
   const [previewingId, setPreviewingId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
@@ -127,6 +132,10 @@ export function SetupForm({ initialRole }: { initialRole: EngineerRole }) {
     }
   }
 
+  function toggleTopic(id: string) {
+    setTopics((prev) => (prev.includes(id) ? prev.filter((t) => t !== id) : [...prev, id]));
+  }
+
   function handleStart() {
     setError(null);
     previewCleanupRef.current?.();
@@ -137,6 +146,8 @@ export function SetupForm({ initialRole }: { initialRole: EngineerRole }) {
       strictness,
       questionType,
       interviewer: interviewerId,
+      // Language + focus topics only apply to technical (coding) interviews.
+      ...(questionType === "technical" ? { language, topics } : {}),
     };
     startTransition(async () => {
       const res = await saveSetupDraft(config);
@@ -190,12 +201,59 @@ export function SetupForm({ initialRole }: { initialRole: EngineerRole }) {
               </button>
             ))}
           </div>
-          {questionType === "technical" ? (
-            <p className="mt-2 text-xs text-gray-500">
-              Technical interviews (coding problems) arrive in a later phase.
-            </p>
-          ) : null}
         </div>
+
+        {questionType === "technical" ? (
+          <>
+            <div>
+              <label htmlFor="language" className="mb-3 block text-sm font-medium text-gray-700">
+                Language
+              </label>
+              <div className="relative">
+                <select
+                  id="language"
+                  value={language}
+                  onChange={(e) => setLanguage(e.target.value as ProgrammingLanguage)}
+                  className="w-full appearance-none rounded-xl border border-white/60 bg-white/60 py-3 pr-10 pl-4 text-gray-900 shadow-sm backdrop-blur-sm focus:border-blue-400 focus:ring-2 focus:ring-blue-400/20 focus:outline-none"
+                >
+                  {EXECUTABLE_LANGUAGES.map((l) => (
+                    <option key={l} value={l}>
+                      {LANGUAGES[l].label}
+                    </option>
+                  ))}
+                </select>
+                <ChevronDown className="pointer-events-none absolute top-1/2 right-4 size-4 -translate-y-1/2 text-gray-500" />
+              </div>
+            </div>
+
+            <div>
+              <div className="mb-3 flex items-center justify-between">
+                <p className="text-sm font-medium text-gray-700">Focus Topics</p>
+                <span className="text-xs text-gray-400">
+                  {topics.length === 0 ? "All topics" : `${topics.length} selected`}
+                </span>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                {TOPIC_CATEGORIES.map((topic) => (
+                  <button
+                    key={topic.id}
+                    type="button"
+                    onClick={() => toggleTopic(topic.id)}
+                    aria-pressed={topics.includes(topic.id)}
+                    className={cn(
+                      "rounded-full px-3 py-1.5 text-xs font-medium transition-all",
+                      topics.includes(topic.id)
+                        ? "bg-gradient-to-r from-purple-500 to-blue-500 text-white shadow-sm"
+                        : "border border-gray-200 bg-white/60 text-gray-600 hover:bg-white/80",
+                    )}
+                  >
+                    {topic.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </>
+        ) : null}
 
         <StopSlider
           label="Question Difficulty"

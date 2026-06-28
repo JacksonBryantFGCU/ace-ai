@@ -31,6 +31,27 @@ export const PROGRAMMING_LANGUAGES: readonly ProgrammingLanguage[] = [
   "bash",
 ];
 
+/** Focus-topic categories for technical interviews (ported from the legacy bank). */
+export const TOPIC_CATEGORIES = [
+  { id: "arrays", label: "Arrays & Strings" },
+  { id: "hash-maps", label: "Hash Maps" },
+  { id: "linked-lists", label: "Linked Lists" },
+  { id: "trees", label: "Trees & Graphs" },
+  { id: "dynamic-programming", label: "Dynamic Programming" },
+  { id: "sorting", label: "Sorting & Searching" },
+  { id: "stacks-queues", label: "Stacks & Queues" },
+  { id: "system-design", label: "System Design" },
+  { id: "recursion", label: "Recursion & Backtracking" },
+  { id: "math", label: "Math & Logic" },
+] as const;
+
+export type TopicId = (typeof TOPIC_CATEGORIES)[number]["id"];
+
+/** Topic id → human label (used by prompts + UI). */
+export const TOPIC_LABELS: Record<string, string> = Object.fromEntries(
+  TOPIC_CATEGORIES.map((t) => [t.id, t.label]),
+);
+
 /** Engineering roles allowed for setup config and profile role (ported allow-list). */
 export const VALID_ROLES = [
   "frontend",

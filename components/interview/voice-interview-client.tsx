@@ -7,6 +7,8 @@ import { useVapiInterview } from "@/hooks/use-vapi-interview";
 import { useKeyboardShortcuts, type ShortcutsMap } from "@/hooks/use-keyboard-shortcuts";
 import { getVapi } from "@/lib/vapi";
 import { getInterviewer } from "@/lib/constants";
+import { buildAssistant } from "@/lib/interview/assistant";
+import { buildFirstMessage, buildSystemPrompt } from "@/lib/prompts/behavioral";
 import { titleCase } from "@/lib/format";
 import { MicVisualizer } from "@/components/interview/mic-visualizer";
 import { KeyboardShortcutsHelp } from "@/components/interview/keyboard-shortcuts-help";
@@ -99,7 +101,12 @@ export function VoiceInterviewClient({ config }: { config: VapiInterviewConfig }
     navigatedRef.current = false;
     warned2MinRef.current = false;
     warned0MinRef.current = false;
-    void start(config);
+    const assistant = buildAssistant({
+      systemPrompt: buildSystemPrompt(config, interviewer.personality),
+      firstMessage: buildFirstMessage(config, interviewer.name),
+      voice: interviewer.voice,
+    });
+    void start(assistant);
   };
 
   // Keep refs to the latest handlers so the keyboard-shortcut map and timer

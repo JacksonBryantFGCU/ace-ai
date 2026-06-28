@@ -2,17 +2,16 @@
 
 import { useEffect, useState } from "react";
 import { getVapi, unlockAudio, type VapiAssistantConfig } from "@/lib/vapi";
-import { getInterviewer } from "@/lib/constants";
-import { buildFirstMessage, buildSystemPrompt } from "@/lib/prompts/behavioral";
 import { evaluateInterview } from "@/actions/interview";
 import type { TranscriptEntry, VapiAnalysisResult, VapiInterviewConfig } from "@/types/interview";
 
 /**
- * Voice interview lifecycle hook — ported from the legacy `useVapiInterview`.
- * Behavior is preserved; the two changed call sites are:
- *  - the Vapi public key + prompt/roster now come from shared modules, and
- *  - evaluation calls the `evaluateInterview` Server Action (not `POST /evaluate`),
- *    which persists the interview and returns its id.
+ * Shared voice-interview lifecycle hook — ported from the legacy
+ * `useVapiInterview` and generalized in Phase 5 so the behavioral and technical
+ * islands share one implementation. The caller builds the Vapi assistant config
+ * (via `lib/interview/assistant` + the relevant prompt module) and passes it to
+ * `start()`; this hook owns the call lifecycle, transcript, mute/volume, and
+ * evaluation (`evaluateInterview` Server Action → persists + returns the id).
  */
 
 interface VapiTranscriptMessage {
@@ -157,7 +156,8 @@ export function useVapiInterview() {
     }
   };
 
-  const start = async (config: VapiInterviewConfig) => {
+  /** Start a call with a prebuilt assistant config (caller owns prompt/voice). */
+  const start = async (assistant: VapiAssistantConfig) => {
     try {
       setErrorMessage(null);
       setStatus("connecting");
@@ -168,25 +168,7 @@ export function useVapiInterview() {
       // Unlock audio output — must happen inside the user-gesture handler.
       await unlockAudio();
 
-      const interviewer = getInterviewer(config.interviewer);
-      const systemPrompt = buildSystemPrompt(config, interviewer.personality);
-      const firstMessage = buildFirstMessage(config, interviewer.name);
-
-      const assistantConfig = {
-        model: {
-          provider: "openai",
-          model: "gpt-4.1",
-          messages: [{ role: "system", content: systemPrompt }],
-        },
-        voice: interviewer.voice,
-        transcriber: { provider: "deepgram", model: "nova-3", language: "en" },
-        firstMessage,
-        backgroundSpeechDenoisingPlan: {
-          smartDenoisingPlan: { enabled: true },
-        },
-      } as unknown as VapiAssistantConfig;
-
-      await getVapi().start(assistantConfig);
+      await getVapi().start(assistant);
     } catch (err) {
       console.error("Failed to start Vapi call:", err);
       setErrorMessage(
