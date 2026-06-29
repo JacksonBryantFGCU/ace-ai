@@ -36,9 +36,10 @@ export function isAnonOnlyAuthPath(pathname: string): boolean {
 /**
  * Returns a safe internal redirect path from an untrusted `next` value, falling
  * back when it is missing or could be an open redirect. Used everywhere a `next`
- * param is consumed so the rule lives in exactly one place.
+ * param is consumed so the rule lives in exactly one place. The default landing
+ * is the home page (`/`).
  */
-export function safeNext(next: string | null | undefined, fallback = "/dashboard"): string {
+export function safeNext(next: string | null | undefined, fallback = "/"): string {
   if (!next) return fallback;
   // Must be an internal absolute path. Reject protocol-relative ("//"),
   // backslash tricks, and anything with a scheme.

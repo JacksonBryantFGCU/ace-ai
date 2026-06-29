@@ -16,15 +16,22 @@ const NAV_ITEMS = [
   { label: "Analytics", href: "/analytics" },
 ] as const;
 
-/** Which nav item owns a given pathname (so deep routes still light up a tab). */
+/** True when `pathname` is `base` or a child of it — matched on segment
+ *  boundaries so `/interview` does not match `/interviews`. */
+function underBase(pathname: string, base: string): boolean {
+  return pathname === base || pathname.startsWith(`${base}/`);
+}
+
+/** Which nav item owns a given pathname (so deep routes still light up a tab).
+ *  Each route lights up exactly one tab. */
 function isActive(href: string, pathname: string): boolean {
   // Home matches the marketing root only — never the deeper app routes.
   if (href === "/") return pathname === "/";
+  // The Practice flow spans role selection, setup, and the live interview.
   if (href === "/roles") {
-    return ["/roles", "/setup", "/interview"].some((p) => pathname.startsWith(p));
+    return ["/roles", "/setup", "/interview"].some((base) => underBase(pathname, base));
   }
-  if (href === "/interviews") return pathname.startsWith("/interviews");
-  return pathname === href || pathname.startsWith(`${href}/`);
+  return underBase(pathname, href);
 }
 
 function initialsFrom(name: string): string {

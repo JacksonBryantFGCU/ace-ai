@@ -46,7 +46,7 @@ export async function requireUser(): Promise<User> {
  * signup, forgot/verify). Server-side defense-in-depth alongside the proxy's
  * optimistic redirect. Does nothing for anonymous users.
  */
-export async function redirectIfAuthenticated(to = "/dashboard"): Promise<void> {
+export async function redirectIfAuthenticated(to = "/"): Promise<void> {
   const user = await getUser();
   if (user) {
     redirect(to);
