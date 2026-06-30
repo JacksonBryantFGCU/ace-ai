@@ -24,6 +24,7 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { ROLE_META } from "@/lib/constants";
+import type { PassId } from "@/lib/billing/passes";
 
 export interface CtaLink {
   label: string;
@@ -535,6 +536,8 @@ export interface PricingPlan {
   features: string[];
   cta: CtaLink;
   highlighted?: boolean;
+  /** When set, the CTA buys this time pass via Stripe Checkout (auth-aware). */
+  passId?: PassId;
 }
 
 export const pricingPlans: PricingPlan[] = [
@@ -542,46 +545,61 @@ export const pricingPlans: PricingPlan[] = [
     name: "Free",
     price: "$0",
     description: "Try the full product — both modes.",
-    features: ["1 full practice interview", "AI evaluation & transcript", "Behavioral & technical"],
+    features: ["2 full practice interviews", "AI evaluation & transcript", "Behavioral & technical"],
     cta: { label: "Get started free", href: "/signup" },
   },
   {
-    name: "Pro",
-    price: "$20",
-    period: "/month",
-    description: "Unlimited practice until you land it.",
+    name: "Day Pass",
+    price: "$5",
+    period: "/ 24 hours",
+    description: "A final cram before the big day.",
     features: [
-      "Unlimited interviews",
+      "Unlimited interviews for 24 hours",
       "Full analytics & progress tracking",
       "All role tracks & difficulties",
-      "Priority access to new features",
+      "No subscription — one-time",
     ],
-    cta: { label: "Upgrade to Pro", href: "/signup" },
+    cta: { label: "Get Day Pass", href: "/signup" },
+    passId: "day",
+  },
+  {
+    name: "Week Pass",
+    price: "$15",
+    period: "/ 7 days",
+    description: "Practice all week before your onsite.",
+    features: [
+      "Unlimited interviews for 7 days",
+      "Full analytics & progress tracking",
+      "All role tracks & difficulties",
+      "No subscription — one-time",
+    ],
+    cta: { label: "Get Week Pass", href: "/signup" },
     highlighted: true,
+    passId: "week",
   },
 ];
 
 /**
- * Feature-by-feature comparison between the Free and Pro tiers, rendered as a
- * table on the pricing page. A `true`/`false` value renders a check / dash; a
- * string renders verbatim (e.g. "Unlimited", "Limited").
+ * Feature-by-feature comparison between the Free tier and an active pass,
+ * rendered as a table on the pricing page. A `true`/`false` value renders a
+ * check / dash; a string renders verbatim (e.g. "Unlimited", "Limited").
  */
 export interface PlanComparisonRow {
   feature: string;
   free: boolean | string;
-  pro: boolean | string;
+  pass: boolean | string;
 }
 
 export const planComparison: PlanComparisonRow[] = [
-  { feature: "Interviews", free: "2 total", pro: "Unlimited" },
-  { feature: "Behavioral & technical modes", free: true, pro: true },
-  { feature: "Voice AI interviewer", free: true, pro: true },
-  { feature: "Live coding environment", free: true, pro: true },
-  { feature: "AI evaluation & transcript", free: true, pro: true },
-  { feature: "Analytics & progress tracking", free: false, pro: true },
-  { feature: "Full interview history", free: false, pro: true },
-  { feature: "All role tracks & difficulties", free: "Limited", pro: true },
-  { feature: "Priority access to new features", free: false, pro: true },
+  { feature: "Interviews", free: "2 total", pass: "Unlimited while active" },
+  { feature: "Behavioral & technical modes", free: true, pass: true },
+  { feature: "Voice AI interviewer", free: true, pass: true },
+  { feature: "Live coding environment", free: true, pass: true },
+  { feature: "AI evaluation & transcript", free: true, pass: true },
+  { feature: "Analytics & progress tracking", free: true, pass: true },
+  { feature: "Full interview history", free: true, pass: true },
+  { feature: "All role tracks & difficulties", free: "Limited", pass: true },
+  { feature: "No subscription — one-time", free: true, pass: true },
 ];
 
 export const finalCta = {

@@ -3,7 +3,12 @@
 import { useEffect, useState } from "react";
 import { getVapi, unlockAudio, type VapiAssistantConfig } from "@/lib/vapi";
 import { evaluateInterview } from "@/actions/interview";
-import type { TranscriptEntry, VapiAnalysisResult, VapiInterviewConfig } from "@/types/interview";
+import type {
+  CodeSubmission,
+  TranscriptEntry,
+  VapiAnalysisResult,
+  VapiInterviewConfig,
+} from "@/types/interview";
 
 /**
  * Shared voice-interview lifecycle hook — ported from the legacy
@@ -134,6 +139,7 @@ export function useVapiInterview() {
     transcript: TranscriptEntry[],
     config: VapiInterviewConfig,
     metrics?: CallMetrics,
+    submissions?: CodeSubmission[],
   ): Promise<{ result: VapiAnalysisResult; id: string } | null> => {
     if (transcript.length < 2) {
       console.warn("Not enough messages to evaluate");
@@ -141,7 +147,7 @@ export function useVapiInterview() {
     }
     setIsAnalyzing(true);
     try {
-      const res = await evaluateInterview(transcript, config, metrics);
+      const res = await evaluateInterview(transcript, config, metrics, submissions);
       if (!res.ok) {
         setErrorMessage(res.error);
         return null;

@@ -18,5 +18,9 @@ export const metadata: Metadata = {
 export default async function AppLayout({ children }: { children: ReactNode }) {
   const user = await requireUser();
 
-  return <AppShell name={userDisplayName(user)}>{children}</AppShell>;
+  return (
+    <AppShell name={userDisplayName(user)} email={user.email ?? null}>
+      {children}
+    </AppShell>
+  );
 }

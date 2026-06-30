@@ -83,6 +83,19 @@ export interface ProblemExample {
   explanation?: string;
 }
 
+/**
+ * A candidate's final code for one technical-interview problem, plus whether it
+ * passed all provided test cases. Captured at the end of a technical interview
+ * so the evaluator can grade actual correctness (not just the spoken transcript)
+ * and the replay can show what was written.
+ */
+export interface CodeSubmission {
+  problemTitle: string;
+  language: ProgrammingLanguage;
+  code: string;
+  passed: boolean;
+}
+
 /** A coding problem presented in the technical interview (canonical shape). */
 export interface CodingProblem {
   id: string;

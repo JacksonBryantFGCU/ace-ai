@@ -37,14 +37,14 @@ export const faqItems: FaqItem[] = [
       "Your account is what saves your interview, evaluation, and transcript so you can review them later — and it's how we keep your free interview tied to you.",
   },
   {
-    question: "What's included in Pro?",
+    question: "What do the passes include?",
     answer:
-      "Pro ($20/month) unlocks unlimited interviews, full analytics and progress tracking, complete interview history, all role tracks and difficulty levels, and priority access to new features.",
+      "A Day Pass ($5) gives you 24 hours of unlimited interviews, and a Week Pass ($15) gives you 7 days — both with full analytics and progress tracking, complete interview history, and every role track and difficulty level. Passes are one-time payments, not subscriptions.",
   },
   {
-    question: "Can I cancel anytime?",
+    question: "Is it a subscription? Can I cancel?",
     answer:
-      "Yes — cancel in one click from your account. You keep Pro access through the end of the current billing period, then drop to Free with no further charges.",
+      "No subscription — passes are one-time payments, so there's nothing to cancel. Buy a pass when you have an interview coming up; when it expires you simply drop back to the free tier with no further charges. Buying another pass while one is active just adds the time on top.",
   },
   {
     question: "How realistic are the interviews?",

@@ -1,4 +1,4 @@
-import type { TranscriptEntry, VapiInterviewConfig } from "@/types/interview";
+import type { CodeSubmission, TranscriptEntry, VapiInterviewConfig } from "@/types/interview";
 
 /**
  * Pure prompt builders for transcript evaluation. No secrets, no I/O — safe to
@@ -18,6 +18,24 @@ export function formatTranscript(transcript: TranscriptEntry[]): string {
     .join("\n");
 }
 
+/**
+ * Format the candidate's code submissions for the evaluator: per problem, the
+ * final code and whether it passed all provided test cases. Appended to the user
+ * message for technical interviews so scoring reflects real correctness.
+ */
+export function formatSubmissions(submissions: CodeSubmission[]): string {
+  const blocks = submissions.map((s, i) => {
+    const status = s.passed ? "PASSED all test cases" : "did NOT pass all test cases";
+    return `Problem ${i + 1}: ${s.problemTitle}
+Test result: ${status}
+Candidate's ${s.language} solution:
+\`\`\`${s.language}
+${s.code}
+\`\`\``;
+  });
+  return `\n\n--- Coding submissions ---\n${blocks.join("\n\n")}`;
+}
+
 export function buildVapiAnalysisPrompt(config: VapiInterviewConfig): string {
   const roleLabel = titleCase(config.role);
 
@@ -31,7 +49,11 @@ Interview settings:
 - Interviewer strictness: ${config.strictness}
 
 Evaluate the candidate's performance considering the difficulty and experience level. A junior candidate answering easy questions should be graded relative to junior expectations. A senior candidate answering hard questions should be graded relative to senior expectations.
-
+${
+  config.questionType === "technical"
+    ? `\nThis is a technical coding interview. Below the transcript you are given the candidate's code submissions and whether each one passed all provided test cases. Weight "technicalAccuracy" and "problemSolving" primarily on whether the solutions are correct and pass their tests — a confident explanation does not compensate for code that fails its tests, and working code with a rough explanation should still score well on correctness. Reference the actual code in your feedback.\n`
+    : ""
+}
 Return a JSON object with exactly this structure:
 {
   "score": <number 0-100, overall interview performance>,

@@ -4,27 +4,46 @@ import { revalidateTag } from "next/cache";
 import { redirect } from "next/navigation";
 import { requireUser } from "@/server/auth";
 import { rateLimit } from "@/server/rate-limit";
+import { canStartInterview } from "@/server/entitlements";
 import { analyzeVapiTranscript } from "@/server/ai/evaluate";
 import { saveInterview } from "@/server/storage";
 import { clearDraft, saveDraft } from "@/server/interview-draft";
 import { evaluateInputSchema, firstIssue, interviewConfigSchema } from "@/lib/validation/interview";
-import type { TranscriptEntry, VapiAnalysisResult, VapiInterviewConfig } from "@/types/interview";
+import type {
+  CodeSubmission,
+  TranscriptEntry,
+  VapiAnalysisResult,
+  VapiInterviewConfig,
+} from "@/types/interview";
 
-export type SaveSetupDraftResult = { ok: false; error: string };
+export type SaveSetupDraftResult = { ok: false; error: string; reason?: "upgrade" };
 
 /**
  * Persist the setup config as an httpOnly draft cookie, then redirect to the
  * matching interview route. Replaces the legacy `location.state` handoff.
- * On success it redirects (no return); on invalid input it returns an error.
+ * On success it redirects (no return); on invalid input or an exhausted free
+ * allowance it returns an error.
+ *
+ * The free/pass entitlement gate is enforced here — the single server choke point
+ * that commits a config and starts an interview. Never trusted to the client.
  */
 export async function saveSetupDraft(
   config: VapiInterviewConfig,
 ): Promise<SaveSetupDraftResult | void> {
-  await requireUser();
+  const user = await requireUser();
 
   const parsed = interviewConfigSchema.safeParse(config);
   if (!parsed.success) {
     return { ok: false, error: firstIssue(parsed.error) };
+  }
+
+  const entitlement = await canStartInterview(user.id);
+  if (!entitlement.allowed) {
+    return {
+      ok: false,
+      reason: "upgrade",
+      error: "You've used your free interviews. Get a pass for unlimited practice.",
+    };
   }
 
   await saveDraft(parsed.data);
@@ -54,6 +73,7 @@ export async function evaluateInterview(
   transcript: TranscriptEntry[],
   config: VapiInterviewConfig,
   metrics: EvaluateMetrics = {},
+  submissions: CodeSubmission[] = [],
 ): Promise<EvaluateInterviewResult> {
   const user = await requireUser();
 
@@ -64,18 +84,25 @@ export async function evaluateInterview(
   // The model only scores interviewer/candidate turns; drop any system turns.
   const conversation = transcript.filter((entry) => entry.role !== "system");
 
-  const parsed = evaluateInputSchema.safeParse({ transcript: conversation, config });
+  const parsed = evaluateInputSchema.safeParse({ transcript: conversation, config, submissions });
   if (!parsed.success) {
     return { ok: false, error: firstIssue(parsed.error) };
   }
 
+  const validSubmissions = parsed.data.submissions ?? [];
+
   try {
-    const result = await analyzeVapiTranscript(parsed.data.transcript, parsed.data.config);
+    const result = await analyzeVapiTranscript(
+      parsed.data.transcript,
+      parsed.data.config,
+      validSubmissions,
+    );
 
     const { id } = await saveInterview(user.id, config, result, conversation, {
       ...metrics,
       success: true,
       questionCount: result.questionBreakdown.length || undefined,
+      submissions: validSubmissions.length > 0 ? validSubmissions : undefined,
     });
 
     // The interview is complete — consume its setup draft so a refresh of the

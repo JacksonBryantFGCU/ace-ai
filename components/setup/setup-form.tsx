@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useRef, useState, useTransition } from "react";
-import { ChevronDown } from "lucide-react";
+import Link from "next/link";
+import { ChevronDown, Sparkles } from "lucide-react";
 import { saveSetupDraft } from "@/actions/interview";
 import { getVapi, unlockAudio, type VapiAssistantConfig } from "@/lib/vapi";
 import {
@@ -38,7 +39,14 @@ const STRICTNESS_LABELS: Record<Strictness, string> = {
   strict: "Strict",
 };
 
-export function SetupForm({ initialRole }: { initialRole: EngineerRole }) {
+export function SetupForm({
+  initialRole,
+  locked = false,
+}: {
+  initialRole: EngineerRole;
+  /** When true the free allowance is used up — show an upgrade CTA, not Start. */
+  locked?: boolean;
+}) {
   const [role, setRole] = useState<EngineerRole>(initialRole);
   const [questionType, setQuestionType] = useState<QuestionType>("behavioral");
   const [difficulty, setDifficulty] = useState<Difficulty>("medium");
@@ -49,6 +57,7 @@ export function SetupForm({ initialRole }: { initialRole: EngineerRole }) {
   const [topics, setTopics] = useState<string[]>([]);
   const [previewingId, setPreviewingId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [upgradeBlocked, setUpgradeBlocked] = useState(locked);
   const [pending, startTransition] = useTransition();
 
   const previewCleanupRef = useRef<(() => void) | null>(null);
@@ -152,7 +161,10 @@ export function SetupForm({ initialRole }: { initialRole: EngineerRole }) {
     startTransition(async () => {
       const res = await saveSetupDraft(config);
       // Success redirects server-side; only an error returns.
-      if (res && !res.ok) setError(res.error);
+      if (res && !res.ok) {
+        setError(res.error);
+        if (res.reason === "upgrade") setUpgradeBlocked(true);
+      }
     });
   }
 
@@ -330,14 +342,29 @@ export function SetupForm({ initialRole }: { initialRole: EngineerRole }) {
           </p>
         ) : null}
 
-        <Button
-          variant="brand"
-          onClick={handleStart}
-          disabled={pending}
-          className="h-14 w-full rounded-xl text-base"
-        >
-          {pending ? "Starting…" : "Start Interview"}
-        </Button>
+        {upgradeBlocked ? (
+          <div className="space-y-3 rounded-xl border border-purple-200 bg-purple-50/50 p-5 text-center">
+            <p className="text-sm text-gray-700">
+              You&apos;ve used your free interviews. Grab a day or week pass for unlimited practice.
+            </p>
+            <Link
+              href="/pricing"
+              className="inline-flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-blue-500 to-purple-600 text-base font-semibold text-white shadow-md transition-all hover:shadow-lg"
+            >
+              <Sparkles className="size-5" />
+              View passes
+            </Link>
+          </div>
+        ) : (
+          <Button
+            variant="brand"
+            onClick={handleStart}
+            disabled={pending}
+            className="h-14 w-full rounded-xl text-base"
+          >
+            {pending ? "Starting…" : "Start Interview"}
+          </Button>
+        )}
       </div>
     </div>
   );

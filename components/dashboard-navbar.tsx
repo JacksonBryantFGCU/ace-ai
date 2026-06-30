@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Bell, ChevronDown, FileText, LogOut, Menu, X } from "lucide-react";
+import { Bell, ChevronDown, LogOut, Menu, Sparkles, User, X } from "lucide-react";
 import { signOut } from "@/actions/auth";
 import { BrandLogo } from "@/components/brand-logo";
 import { cn } from "@/lib/utils";
@@ -11,9 +11,8 @@ import { cn } from "@/lib/utils";
 const NAV_ITEMS = [
   { label: "Dashboard", href: "/dashboard" },
   { label: "New Interview", href: "/new" },
-  { label: "Interviews", href: "/interviews" },
-  { label: "Progress", href: "/analytics" },
-  { label: "Profile", href: "/profile" },
+  { label: "Past Interviews", href: "/interviews" },
+  { label: "Analytics", href: "/analytics" },
 ] as const;
 
 /** True when `pathname` is `base` or a child of it — matched on segment
@@ -52,9 +51,11 @@ function initialsFrom(name: string): string {
  */
 export function DashboardNavbar({
   name,
+  email,
   variant = "light",
 }: {
   name: string;
+  email?: string | null;
   variant?: "light" | "dark";
 }) {
   const pathname = usePathname();
@@ -170,13 +171,25 @@ export function DashboardNavbar({
               <div
                 role="menu"
                 className={cn(
-                  "absolute right-0 mt-2 w-56 overflow-hidden rounded-2xl border shadow-lg backdrop-blur-xl",
-                  dark ? "border-white/10 bg-gray-800/90" : "border-white/60 bg-white/80",
+                  "absolute right-0 mt-2 w-56 overflow-hidden rounded-2xl border shadow-lg",
+                  dark ? "border-white/10 bg-gray-800" : "border-gray-200 bg-white",
                 )}
               >
+                {/* Identity header */}
+                <div className={cn("border-b px-4 py-3", dark ? "border-white/10" : "border-gray-200/50")}>
+                  <p className={cn("truncate font-semibold", dark ? "text-white" : "text-gray-900")}>
+                    {name}
+                  </p>
+                  {email ? (
+                    <p className={cn("truncate text-sm", dark ? "text-gray-400" : "text-gray-500")}>
+                      {email}
+                    </p>
+                  ) : null}
+                </div>
+
                 <div className="py-2">
                   <Link
-                    href="/interviews"
+                    href="/profile"
                     role="menuitem"
                     onClick={closeMenus}
                     className={cn(
@@ -184,8 +197,22 @@ export function DashboardNavbar({
                       dark ? "text-gray-300 hover:bg-white/10" : "text-gray-700 hover:bg-blue-50/50",
                     )}
                   >
-                    <FileText className="size-4" />
-                    Past Interviews
+                    <User className="size-4" />
+                    Profile &amp; settings
+                  </Link>
+                  <Link
+                    href="/pricing"
+                    role="menuitem"
+                    onClick={closeMenus}
+                    className={cn(
+                      "flex w-full items-center gap-3 px-4 py-3 font-semibold transition-all",
+                      dark
+                        ? "text-purple-300 hover:bg-white/10"
+                        : "text-purple-600 hover:bg-purple-50/60",
+                    )}
+                  >
+                    <Sparkles className="size-4" />
+                    Upgrade
                   </Link>
                   <div className={cn("my-2 border-t", dark ? "border-white/10" : "border-gray-200/50")} />
                   <form action={signOut}>

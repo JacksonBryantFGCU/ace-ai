@@ -11,6 +11,8 @@ import {
   Smartphone,
   type LucideIcon,
 } from "lucide-react";
+import { requireUser } from "@/server/auth";
+import { canStartInterview } from "@/server/entitlements";
 import { ROLE_META, asRole, type EngineerRole } from "@/lib/constants";
 import { SetupForm } from "@/components/setup/setup-form";
 
@@ -43,6 +45,9 @@ export default async function NewInterviewPage(props: {
 
   // Step 2 — configuration for the chosen role.
   if (selectedRole) {
+    const user = await requireUser();
+    const entitlement = await canStartInterview(user.id);
+
     return (
       <div className="mx-auto max-w-7xl space-y-6 py-2">
         <div className="space-y-1">
@@ -51,7 +56,12 @@ export default async function NewInterviewPage(props: {
           </Link>
           <h1 className="text-3xl font-bold tracking-tight text-gray-900">Configure Your Interview</h1>
         </div>
-        <SetupForm initialRole={selectedRole} />
+        {entitlement.allowed && entitlement.reason === "free_remaining" ? (
+          <p className="text-sm text-gray-500">
+            {entitlement.freeRemaining} free interview{entitlement.freeRemaining === 1 ? "" : "s"} remaining.
+          </p>
+        ) : null}
+        <SetupForm initialRole={selectedRole} locked={!entitlement.allowed} />
       </div>
     );
   }

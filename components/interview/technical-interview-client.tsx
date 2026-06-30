@@ -78,11 +78,29 @@ export function TechnicalInterviewClient({
     navigatedRef.current = true;
     const completedAt = Date.now();
     const startedAt = startedAtRef.current ?? undefined;
-    const evaluation = await evaluateTranscript(messages, config, {
-      startedAt,
-      completedAt,
-      durationMs: startedAt ? completedAt - startedAt : undefined,
-    });
+
+    // Capture the candidate's final code + pass/fail per problem so the evaluator
+    // grades real correctness (not just the transcript) and the replay can show
+    // the solutions. Only include problems the candidate actually wrote code for.
+    const submissions = problems
+      .map((problem, i) => ({
+        problemTitle: problem.title,
+        language,
+        code: code[i] ?? problem.starterCode?.[language] ?? "",
+        passed: passed[i] ?? false,
+      }))
+      .filter((s) => s.code.trim().length > 0);
+
+    const evaluation = await evaluateTranscript(
+      messages,
+      config,
+      {
+        startedAt,
+        completedAt,
+        durationMs: startedAt ? completedAt - startedAt : undefined,
+      },
+      submissions,
+    );
     if (evaluation?.id) router.push(`/interviews/${evaluation.id}`);
     else navigatedRef.current = false;
   };

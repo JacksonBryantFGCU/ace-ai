@@ -9,6 +9,7 @@ import { formatDateTime, scoreTone, titleCase } from "@/lib/format";
 import { TranscriptTimeline } from "@/components/interviews/transcript-timeline";
 import { QuestionAnalysis } from "@/components/interviews/question-analysis";
 import { OverallSummary } from "@/components/interviews/overall-summary";
+import { SolutionsList } from "@/components/interviews/solutions-list";
 import { SettingChip } from "@/components/interview/setting-chip";
 
 export async function generateMetadata(props: PageProps<"/interviews/[id]">): Promise<Metadata> {
@@ -30,6 +31,7 @@ export default async function InterviewReplayPage(props: PageProps<"/interviews/
   if (!interview) notFound();
 
   const { result, config } = interview;
+  const submissions = interview.submissions ?? [];
   const roleLabel = ROLE_LABELS[interview.role] ?? titleCase(interview.role);
   const interviewer = getInterviewer(config?.interviewer);
 
@@ -90,6 +92,15 @@ export default async function InterviewReplayPage(props: PageProps<"/interviews/
           ) : (
             <p className="text-muted-foreground text-sm">No evaluation available for this interview.</p>
           )}
+
+          {submissions.length > 0 ? (
+            <div className="space-y-4 pt-2">
+              <h2 className="text-xs font-semibold tracking-widest text-gray-400 uppercase">
+                Your Solutions
+              </h2>
+              <SolutionsList submissions={submissions} />
+            </div>
+          ) : null}
         </section>
       </div>
     </div>

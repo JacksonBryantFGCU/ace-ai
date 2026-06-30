@@ -25,12 +25,21 @@ export const interviewConfigSchema = z.object({
   topics: z.array(z.string()).optional(),
 });
 
+/** A candidate's final code submission for one technical-interview problem. */
+const codeSubmissionSchema = z.object({
+  problemTitle: z.string().min(1).max(300),
+  language: z.enum(["javascript", "typescript", "python", "java", "cpp", "bash"]),
+  code: z.string().max(50_000, { error: "Submitted code is too long." }),
+  passed: z.boolean(),
+});
+
 export const evaluateInputSchema = z.object({
   transcript: z
     .array(transcriptEntrySchema)
     .min(2, { error: "Not enough conversation to evaluate." })
     .max(200, { error: "Transcript is too large." }),
   config: interviewConfigSchema,
+  submissions: z.array(codeSubmissionSchema).max(10).optional(),
 });
 
 /** Profile role allow-list. */

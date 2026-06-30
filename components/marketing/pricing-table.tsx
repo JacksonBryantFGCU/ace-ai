@@ -1,14 +1,16 @@
 import Link from "next/link";
 import { Check } from "lucide-react";
 import type { PricingPlan } from "@/lib/marketing/content";
+import { BuyPassButton } from "@/components/billing/buy-pass-button";
 
 /**
- * Pricing plans. Server component; plans are passed in as props. Only renders the
- * plans/features it is given — no invented tiers or future functionality.
+ * Pricing plans. Server component; plans are passed in as props. Pass plans buy a
+ * time pass (auth-aware) via `BuyPassButton`; the Free plan keeps a plain link.
+ * `isAuthed` decides whether a pass CTA starts checkout or routes to sign-up.
  */
-export function PricingTable({ plans }: { plans: PricingPlan[] }) {
+export function PricingTable({ plans, isAuthed = false }: { plans: PricingPlan[]; isAuthed?: boolean }) {
   return (
-    <div className="mx-auto grid max-w-4xl items-start gap-6 md:grid-cols-2">
+    <div className="mx-auto grid max-w-5xl items-stretch gap-6 md:grid-cols-3">
       {plans.map((plan) => (
         <div
           key={plan.name}
@@ -44,16 +46,30 @@ export function PricingTable({ plans }: { plans: PricingPlan[] }) {
             ))}
           </ul>
 
-          <Link
-            href={plan.cta.href}
-            className={`rounded-xl px-6 py-3.5 text-center text-sm font-semibold transition-all ${
-              plan.highlighted
-                ? "bg-gradient-to-r from-blue-600 via-purple-600 to-pink-500 text-white shadow-md hover:shadow-lg"
-                : "border border-gray-200 bg-white text-gray-900 shadow-sm hover:shadow-md"
-            }`}
-          >
-            {plan.cta.label}
-          </Link>
+          {plan.passId ? (
+            <BuyPassButton
+              passId={plan.passId}
+              isAuthed={isAuthed}
+              className={`block rounded-xl px-6 py-3.5 text-center text-sm font-semibold transition-all ${
+                plan.highlighted
+                  ? "bg-gradient-to-r from-blue-600 via-purple-600 to-pink-500 text-white shadow-md hover:shadow-lg"
+                  : "border border-gray-200 bg-white text-gray-900 shadow-sm hover:shadow-md"
+              }`}
+            >
+              {plan.cta.label}
+            </BuyPassButton>
+          ) : (
+            <Link
+              href={plan.cta.href}
+              className={`rounded-xl px-6 py-3.5 text-center text-sm font-semibold transition-all ${
+                plan.highlighted
+                  ? "bg-gradient-to-r from-blue-600 via-purple-600 to-pink-500 text-white shadow-md hover:shadow-lg"
+                  : "border border-gray-200 bg-white text-gray-900 shadow-sm hover:shadow-md"
+              }`}
+            >
+              {plan.cta.label}
+            </Link>
+          )}
         </div>
       ))}
     </div>

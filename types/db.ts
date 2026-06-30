@@ -8,6 +8,7 @@
  */
 
 import type {
+  CodeSubmission,
   QuestionType,
   VapiAnalysisResult,
   VapiInterviewConfig,
@@ -19,6 +20,10 @@ export interface ProfileRow {
   email: string | null;
   name: string | null;
   role: string | null;
+  /** Stripe customer id, set on first checkout. */
+  stripe_customer_id: string | null;
+  /** When the current time pass expires; null/past = no active pass. */
+  access_expires_at: string | null;
   created_at: string;
 }
 
@@ -31,6 +36,8 @@ export interface InterviewRow {
   config: VapiInterviewConfig | null;
   result: VapiAnalysisResult | null;
   transcript: TranscriptEntry[] | null;
+  /** Technical-interview code submissions; null for behavioral interviews. */
+  submissions: CodeSubmission[] | null;
   created_at: string;
   started_at: string | null;
   completed_at: string | null;

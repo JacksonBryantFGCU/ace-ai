@@ -69,11 +69,13 @@ The app verifies one-time tokens at `/auth/confirm`. Update the templates
 ```sql
 -- profiles: one row per auth user (created by trigger, see §4)
 create table if not exists public.profiles (
-  id          uuid primary key references auth.users(id) on delete cascade,
-  email       text,
-  name        text,
-  role        text default 'fullstack',
-  created_at  timestamptz default now()
+  id                  uuid primary key references auth.users(id) on delete cascade,
+  email               text,
+  name                text,
+  role                text default 'fullstack',
+  stripe_customer_id  text,            -- P1: set on first checkout
+  access_expires_at   timestamptz,     -- P1: active time-pass expiry (null = free tier)
+  created_at          timestamptz default now()
 );
 
 -- interviews: created in a later phase; included for completeness
@@ -85,6 +87,7 @@ create table if not exists public.interviews (
   config         jsonb,
   result         jsonb,
   transcript     jsonb,
+  submissions    jsonb,            -- technical interviews: candidate code + pass/fail per problem
   created_at     timestamptz default now(),
   started_at     timestamptz,
   completed_at   timestamptz,
@@ -94,6 +97,42 @@ create table if not exists public.interviews (
   error          text
 );
 ```
+
+**Migration (P0) — if the `interviews` table already exists without `submissions`, run:**
+
+```sql
+alter table public.interviews
+  add column if not exists submissions jsonb;
+```
+
+This stores each technical-interview problem's final code and whether it passed
+all test cases, so evaluation grades real correctness and the replay shows the
+solutions. Behavioral interviews leave it null and are unaffected.
+
+**Migration (P1, time passes) — add billing columns to `profiles`:**
+
+```sql
+alter table public.profiles
+  add column if not exists stripe_customer_id text,
+  add column if not exists access_expires_at  timestamptz;
+```
+
+Only the **service-role** client (the Stripe webhook) writes these; a user may
+read their own. `access_expires_at > now()` means an active pass (unlimited
+interviews); otherwise the free tier applies (2 completed interviews).
+
+### Stripe dashboard checklist (P1)
+
+1. Create a **Product "ACE.AI Day Pass"** with a **$5 one-time Price**, and
+   **"ACE.AI Week Pass"** with a **$15 one-time Price**. Copy the Price IDs into
+   `STRIPE_PRICE_DAY_PASS` / `STRIPE_PRICE_WEEK_PASS`.
+2. Add a webhook endpoint → `https://<your-domain>/api/stripe/webhook`; subscribe
+   to **`checkout.session.completed`**; copy the signing secret →
+   `STRIPE_WEBHOOK_SECRET`.
+3. Test locally with `stripe listen --forward-to localhost:3000/api/stripe/webhook`.
+
+Passes are **one-time payments** (no subscription), so there is no billing portal
+or cancellation lifecycle to configure.
 
 ---
 

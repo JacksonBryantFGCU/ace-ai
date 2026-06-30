@@ -16,7 +16,15 @@ function isDarkSurface(pathname: string): boolean {
  * most pages, dark slate for the replay experience. Page content is still
  * server-rendered and passed through as `children`.
  */
-export function AppShell({ name, children }: { name: string; children: React.ReactNode }) {
+export function AppShell({
+  name,
+  email,
+  children,
+}: {
+  name: string;
+  email: string | null;
+  children: React.ReactNode;
+}) {
   const pathname = usePathname();
   const dark = isDarkSurface(pathname);
   // Authenticated pages use the pastel light surface; the interview replay is the
@@ -26,7 +34,7 @@ export function AppShell({ name, children }: { name: string; children: React.Rea
 
   return (
     <div className={cn("flex min-h-dvh flex-col", surface)}>
-      <DashboardNavbar name={name} variant={dark ? "dark" : "light"} />
+      <DashboardNavbar name={name} email={email} variant={dark ? "dark" : "light"} />
       <main className="mx-auto w-full max-w-7xl flex-1 px-6 py-8 md:px-8">{children}</main>
     </div>
   );

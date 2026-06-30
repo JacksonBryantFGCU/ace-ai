@@ -32,7 +32,7 @@ export function PlanComparison({ rows }: { rows: PlanComparisonRow[] }) {
           <tr className="bg-[#f5f4fa]">
             <th className="px-6 py-5 text-sm font-bold text-gray-900">Feature</th>
             <th className="px-6 py-5 text-center text-sm font-bold text-gray-900">Free</th>
-            <th className="px-6 py-5 text-center text-sm font-bold text-purple-600">Pro</th>
+            <th className="px-6 py-5 text-center text-sm font-bold text-purple-600">With a pass</th>
           </tr>
         </thead>
         <tbody>
@@ -48,7 +48,7 @@ export function PlanComparison({ rows }: { rows: PlanComparisonRow[] }) {
                 <Cell value={row.free} proAccent={false} />
               </td>
               <td className="px-6 py-4 text-center align-middle">
-                <Cell value={row.pro} proAccent={row.free === false} />
+                <Cell value={row.pass} proAccent={row.free === false} />
               </td>
             </tr>
           ))}

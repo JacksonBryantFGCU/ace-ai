@@ -38,3 +38,22 @@ export function getOpenAIKey(): string {
 export function getOpenAIModel(): string {
   return optionalServerEnv("OPENAI_MODEL") ?? "gpt-4o-mini";
 }
+
+/** Stripe secret key — server-only; used by checkout actions and the webhook. */
+export function getStripeSecretKey(): string {
+  return requireServerEnv("STRIPE_SECRET_KEY");
+}
+
+/** Stripe webhook signing secret — verifies inbound webhook payloads. */
+export function getStripeWebhookSecret(): string {
+  return requireServerEnv("STRIPE_WEBHOOK_SECRET");
+}
+
+/**
+ * Stripe Price ID for a given time pass, read from env. The mapping of pass id →
+ * env var lives here so price IDs (which differ per environment) never leak into
+ * shared/public code.
+ */
+export function getStripePriceId(passId: "day" | "week"): string {
+  return requireServerEnv(passId === "day" ? "STRIPE_PRICE_DAY_PASS" : "STRIPE_PRICE_WEEK_PASS");
+}

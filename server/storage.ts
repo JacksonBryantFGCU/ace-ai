@@ -10,6 +10,7 @@ import type {
   SavedInterview,
 } from "@/types/db";
 import type {
+  CodeSubmission,
   QuestionType,
   TranscriptEntry,
   VapiAnalysisResult,
@@ -39,7 +40,7 @@ const LIST_COLUMNS = "id, created_at, role, question_type, config, result";
 
 /** Detail view selects everything except the internal `user_id`. */
 const DETAIL_COLUMNS =
-  "id, created_at, role, question_type, config, result, transcript, started_at, completed_at, duration_ms, question_count, success, error";
+  "id, created_at, role, question_type, config, result, transcript, submissions, started_at, completed_at, duration_ms, question_count, success, error";
 
 function toListItem(row: InterviewListRow): InterviewListItem {
   return { ...row, date: row.created_at };
@@ -57,6 +58,8 @@ export interface InterviewMetrics {
   questionCount?: number;
   success?: boolean;
   error?: string;
+  /** Technical-interview code submissions (omitted for behavioral). */
+  submissions?: CodeSubmission[];
 }
 
 /** Strip paths/long stacks so the dashboard never surfaces raw internals. */
@@ -94,6 +97,7 @@ export async function saveInterview(
   if (typeof metrics.success === "boolean") row.success = metrics.success;
   const safeError = sanitizeError(metrics.error);
   if (safeError) row.error = safeError;
+  if (metrics.submissions && metrics.submissions.length > 0) row.submissions = metrics.submissions;
 
   const admin = createAdminClient();
   const { data, error } = await admin.from("interviews").insert(row).select("id").single();
