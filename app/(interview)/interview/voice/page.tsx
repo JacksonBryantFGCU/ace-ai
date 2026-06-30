@@ -13,7 +13,7 @@ export default async function VoiceInterviewPage() {
   // saveSetupDraft). No draft → send the user back to setup.
   const config = await readDraft();
   if (!config || config.questionType !== "behavioral") {
-    redirect("/setup");
+    redirect("/new");
   }
 
   return <VoiceInterviewClient config={config} />;

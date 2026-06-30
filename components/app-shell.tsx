@@ -19,13 +19,10 @@ function isDarkSurface(pathname: string): boolean {
 export function AppShell({ name, children }: { name: string; children: React.ReactNode }) {
   const pathname = usePathname();
   const dark = isDarkSurface(pathname);
-  // The Home/hero (`/`) uses the lighter legacy hero gradient; other light pages
-  // use the pastel surface.
-  const surface = dark
-    ? "dark surface-dark text-foreground"
-    : pathname === "/"
-      ? "surface-hero text-gray-900"
-      : "surface-light text-gray-900";
+  // Authenticated pages use the pastel light surface; the interview replay is the
+  // one dark surface. (The marketing home and its hero gradient now live in the
+  // public `(marketing)` group, outside this shell.)
+  const surface = dark ? "dark surface-dark text-foreground" : "surface-light text-gray-900";
 
   return (
     <div className={cn("flex min-h-dvh flex-col", surface)}>

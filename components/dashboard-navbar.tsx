@@ -9,11 +9,11 @@ import { BrandLogo } from "@/components/brand-logo";
 import { cn } from "@/lib/utils";
 
 const NAV_ITEMS = [
-  { label: "Home", href: "/" },
   { label: "Dashboard", href: "/dashboard" },
-  { label: "Practice Interviews", href: "/roles" },
+  { label: "New Interview", href: "/new" },
   { label: "Interviews", href: "/interviews" },
-  { label: "Analytics", href: "/analytics" },
+  { label: "Progress", href: "/analytics" },
+  { label: "Profile", href: "/profile" },
 ] as const;
 
 /** True when `pathname` is `base` or a child of it — matched on segment
@@ -25,11 +25,12 @@ function underBase(pathname: string, base: string): boolean {
 /** Which nav item owns a given pathname (so deep routes still light up a tab).
  *  Each route lights up exactly one tab. */
 function isActive(href: string, pathname: string): boolean {
-  // Home matches the marketing root only — never the deeper app routes.
-  if (href === "/") return pathname === "/";
-  // The Practice flow spans role selection, setup, and the live interview.
-  if (href === "/roles") {
-    return ["/roles", "/setup", "/interview"].some((base) => underBase(pathname, base));
+  // The New Interview flow lives at /new; /roles and /setup are temporary
+  // redirect aliases, and the live interview continues the same flow.
+  if (href === "/new") {
+    return ["/new", "/roles", "/setup", "/interview", "/technical-interview"].some((base) =>
+      underBase(pathname, base),
+    );
   }
   return underBase(pathname, href);
 }

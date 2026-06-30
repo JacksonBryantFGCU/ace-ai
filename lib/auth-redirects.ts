@@ -10,6 +10,8 @@ const PROTECTED_PREFIXES = [
   "/dashboard",
   "/analytics",
   "/interviews",
+  "/new",
+  "/roles",
   "/setup",
   "/profile",
   "/interview",
@@ -37,9 +39,10 @@ export function isAnonOnlyAuthPath(pathname: string): boolean {
  * Returns a safe internal redirect path from an untrusted `next` value, falling
  * back when it is missing or could be an open redirect. Used everywhere a `next`
  * param is consumed so the rule lives in exactly one place. The default landing
- * is the home page (`/`).
+ * after authentication is the dashboard (`/dashboard`); explicit `next=` deep
+ * links are preserved.
  */
-export function safeNext(next: string | null | undefined, fallback = "/"): string {
+export function safeNext(next: string | null | undefined, fallback = "/dashboard"): string {
   if (!next) return fallback;
   // Must be an internal absolute path. Reject protocol-relative ("//"),
   // backslash tricks, and anything with a scheme.
@@ -52,14 +55,19 @@ export function safeNext(next: string | null | undefined, fallback = "/"): strin
  * Coarse, optimistic redirect decision for the proxy. Returns a path to redirect
  * to, or null to continue. Real enforcement still happens in the protected
  * layouts via `requireUser()`.
+ *
+ * `search` is the raw query string (including the leading `?`, e.g. from
+ * `request.nextUrl.search`). It is folded into the captured `next` so that a
+ * deep link like `/setup?role=backend` survives the round-trip through login.
  */
 export function resolveAuthRedirect(
   pathname: string,
   isAuthed: boolean,
   nextParam?: string | null,
+  search = "",
 ): string | null {
   if (isProtectedPath(pathname)) {
-    if (!isAuthed) return `/login?next=${encodeURIComponent(pathname)}`;
+    if (!isAuthed) return `/login?next=${encodeURIComponent(`${pathname}${search}`)}`;
     return null;
   }
   if (isAnonOnlyAuthPath(pathname) && isAuthed) {

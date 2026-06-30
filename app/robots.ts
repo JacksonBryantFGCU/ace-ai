@@ -10,6 +10,8 @@ export default function robots(): MetadataRoute.Robots {
         "/dashboard",
         "/analytics",
         "/interviews",
+        "/new",
+        "/roles",
         "/setup",
         "/profile",
         "/interview",

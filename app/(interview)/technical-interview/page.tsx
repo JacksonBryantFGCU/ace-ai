@@ -17,7 +17,7 @@ export const metadata: Metadata = {
 export default async function TechnicalInterviewPage() {
   const config = await readDraft();
   if (!config || config.questionType !== "technical") {
-    redirect("/setup");
+    redirect("/new");
   }
 
   const problems = await resolveProblems(config);

@@ -63,7 +63,7 @@ export default async function InterviewReplayPage(props: PageProps<"/interviews/
             </span>
           ) : null}
           <Link
-            href="/roles"
+            href="/new"
             className="inline-flex h-9 items-center rounded-xl bg-gradient-to-r from-blue-500 to-blue-600 px-4 text-sm font-semibold text-white shadow-md transition-all hover:from-blue-600 hover:to-blue-700"
           >
             New Interview

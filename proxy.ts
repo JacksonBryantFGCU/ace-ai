@@ -43,8 +43,8 @@ export async function proxy(request: NextRequest) {
   } = await supabase.auth.getUser();
 
   // --- 2. Authorization redirects -------------------------------------------
-  const { pathname, searchParams } = request.nextUrl;
-  const redirectTo = resolveAuthRedirect(pathname, Boolean(user), searchParams.get("next"));
+  const { pathname, searchParams, search } = request.nextUrl;
+  const redirectTo = resolveAuthRedirect(pathname, Boolean(user), searchParams.get("next"), search);
   if (redirectTo) {
     const redirectResponse = NextResponse.redirect(new URL(redirectTo, request.url));
     // Carry over any cookies refreshed above so the session isn't dropped.

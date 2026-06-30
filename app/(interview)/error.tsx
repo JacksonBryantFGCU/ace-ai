@@ -19,7 +19,7 @@ export default function InterviewError({ error, reset }: { error: Error; reset: 
       <p className="text-muted-foreground text-sm">Please try again or head back to setup.</p>
       <div className="flex gap-3">
         <Button onClick={reset}>Try again</Button>
-        <Link href="/setup" className={buttonVariants({ variant: "outline" })}>
+        <Link href="/new" className={buttonVariants({ variant: "outline" })}>
           Back to setup
         </Link>
       </div>
