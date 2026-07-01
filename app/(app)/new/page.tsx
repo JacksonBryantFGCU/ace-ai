@@ -46,7 +46,7 @@ export default async function NewInterviewPage(props: {
   // Step 2 — configuration for the chosen role.
   if (selectedRole) {
     const user = await requireUser();
-    const entitlement = await canStartInterview(user.id);
+    const entitlement = await canStartInterview(user.id, user.email);
 
     return (
       <div className="mx-auto max-w-7xl space-y-6 py-2">

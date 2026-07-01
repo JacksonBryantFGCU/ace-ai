@@ -37,7 +37,7 @@ export async function saveSetupDraft(
     return { ok: false, error: firstIssue(parsed.error) };
   }
 
-  const entitlement = await canStartInterview(user.id);
+  const entitlement = await canStartInterview(user.id, user.email);
   if (!entitlement.allowed) {
     return {
       ok: false,

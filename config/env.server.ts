@@ -39,6 +39,21 @@ export function getOpenAIModel(): string {
   return optionalServerEnv("OPENAI_MODEL") ?? "gpt-4o-mini";
 }
 
+/**
+ * Emails granted unlimited access regardless of the free/pass gate — for
+ * testing while billing is on hold. Comma-separated, case-insensitive. Unset
+ * (the default, and in production) means the real entitlement gate applies to
+ * everyone. Never expose to the client.
+ */
+export function getDevUnlimitedEmails(): string[] {
+  const raw = optionalServerEnv("DEV_UNLIMITED_EMAILS");
+  if (!raw) return [];
+  return raw
+    .split(",")
+    .map((email) => email.trim().toLowerCase())
+    .filter(Boolean);
+}
+
 /** Stripe secret key — server-only; used by checkout actions and the webhook. */
 export function getStripeSecretKey(): string {
   return requireServerEnv("STRIPE_SECRET_KEY");

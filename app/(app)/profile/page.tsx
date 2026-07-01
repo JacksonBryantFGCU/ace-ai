@@ -18,7 +18,7 @@ export default async function ProfilePage() {
   const [profile, access, entitlement] = await Promise.all([
     getProfile(user.id),
     getAccess(user.id),
-    canStartInterview(user.id),
+    canStartInterview(user.id, user.email),
   ]);
   const name = userDisplayName(user);
 
@@ -65,7 +65,16 @@ export default async function ProfilePage() {
 
         {/* Status */}
         <div className="flex flex-wrap items-center gap-3 rounded-2xl border border-gray-100 bg-white/60 p-5">
-          {access.active ? (
+          {entitlement.reason === "dev_override" ? (
+            <>
+              <span className="inline-flex items-center rounded-full bg-emerald-100 px-3 py-1 text-sm font-semibold text-emerald-700">
+                Testing access
+              </span>
+              <span className="text-sm text-gray-600">
+                Unlimited interviews while billing is on hold.
+              </span>
+            </>
+          ) : access.active ? (
             <>
               <span className="inline-flex items-center rounded-full bg-purple-100 px-3 py-1 text-sm font-semibold text-purple-700">
                 Pass active

@@ -5,7 +5,11 @@ import { FREE_INTERVIEW_LIMIT } from "@/lib/billing/passes";
  * server wrapper (`server/entitlements.ts`) supplies the inputs from the DB.
  */
 
-export type EntitlementReason = "active_pass" | "free_remaining" | "free_used";
+export type EntitlementReason =
+  | "active_pass"
+  | "free_remaining"
+  | "free_used"
+  | "dev_override";
 
 export interface Entitlement {
   allowed: boolean;
