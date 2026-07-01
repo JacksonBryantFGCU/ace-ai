@@ -1,5 +1,24 @@
 import Link from "next/link";
-import { ArrowRight, Mic, Sparkles } from "lucide-react";
+import { ArrowRight, BarChart3, Mic, MessageSquare, Sparkles } from "lucide-react";
+
+/** The three-step primer shown to first-run users under the primary CTA. */
+const STEPS = [
+  {
+    icon: Mic,
+    title: "Pick a role",
+    body: "Choose a track and difficulty — behavioral or technical.",
+  },
+  {
+    icon: MessageSquare,
+    title: "Talk it through",
+    body: "Have a real spoken conversation with the AI interviewer.",
+  },
+  {
+    icon: BarChart3,
+    title: "Get scored feedback",
+    body: "Instant, structured results and progress tracking.",
+  },
+] as const;
 
 /**
  * First-run onboarding for the dashboard. Shown in place of the analytics
@@ -44,6 +63,29 @@ export function OnboardingCard() {
         </Link>
 
         <p className="text-sm text-gray-500">Behavioral or technical · about 25 minutes · no signup pressure</p>
+
+        <ol className="mt-4 grid w-full gap-4 text-left sm:grid-cols-3">
+          {STEPS.map((step, i) => {
+            const Icon = step.icon;
+            return (
+              <li
+                key={step.title}
+                className="rounded-2xl border border-white/50 bg-white/40 p-4 backdrop-blur-sm"
+              >
+                <div className="flex items-center gap-2">
+                  <span className="flex size-8 items-center justify-center rounded-lg bg-blue-500/10 text-blue-600">
+                    <Icon className="size-4" />
+                  </span>
+                  <span className="text-xs font-semibold tracking-wide text-gray-400">
+                    STEP {i + 1}
+                  </span>
+                </div>
+                <h3 className="mt-2 font-semibold text-gray-900">{step.title}</h3>
+                <p className="mt-1 text-sm text-gray-600">{step.body}</p>
+              </li>
+            );
+          })}
+        </ol>
       </div>
     </section>
   );

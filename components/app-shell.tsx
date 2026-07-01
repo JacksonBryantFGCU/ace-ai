@@ -35,7 +35,12 @@ export function AppShell({
   return (
     <div className={cn("flex min-h-dvh flex-col", surface)}>
       <DashboardNavbar name={name} email={email} variant={dark ? "dark" : "light"} />
-      <main className="mx-auto w-full max-w-7xl flex-1 px-6 py-8 md:px-8">{children}</main>
+      <main className="mx-auto w-full max-w-7xl flex-1 px-6 py-8 md:px-8">
+        {/* Keyed on route so page content fades in on each client navigation. */}
+        <div key={pathname} className="page-enter">
+          {children}
+        </div>
+      </main>
     </div>
   );
 }
