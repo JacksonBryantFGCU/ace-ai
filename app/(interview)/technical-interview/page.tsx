@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
+import { requireUser } from "@/server/auth";
 import { readDraft } from "@/server/interview-draft";
 import { resolveProblems } from "@/server/problems";
 import { TechnicalInterviewClient } from "@/components/interview/technical-interview-client";
@@ -20,7 +21,8 @@ export default async function TechnicalInterviewPage() {
     redirect("/new");
   }
 
-  const problems = await resolveProblems(config);
+  const user = await requireUser();
+  const problems = await resolveProblems(config, user.id);
 
   return <TechnicalInterviewClient problems={problems} config={config} />;
 }

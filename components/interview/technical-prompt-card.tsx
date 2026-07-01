@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { Check, ChevronLeft, ChevronRight, Lightbulb, Lock } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { CodingProblem } from "@/types/interview";
@@ -24,11 +24,14 @@ export function TechnicalPromptCard({
   onNext: () => void;
 }) {
   // How many hints the candidate has chosen to reveal for the current problem.
-  // Resets whenever the problem changes so hints don't leak across questions.
+  // Reset when the problem changes (React's adjust-state-during-render pattern)
+  // so hints don't leak across questions.
   const [revealed, setRevealed] = useState(0);
-  useEffect(() => {
+  const [lastProblemId, setLastProblemId] = useState(problem?.id);
+  if (problem?.id !== lastProblemId) {
+    setLastProblemId(problem?.id);
     setRevealed(0);
-  }, [problem?.id]);
+  }
 
   if (!problem) {
     return (

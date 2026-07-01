@@ -277,15 +277,25 @@ export function filterProblems(difficulty: Difficulty, topics: string[] = []): C
   return byTopics.length > 0 ? byTopics : byDifficulty;
 }
 
-/** Pick up to `count` distinct random problems for a difficulty + topics. */
+/**
+ * Pick up to `count` distinct random problems for a difficulty + topics.
+ * `excludeTitles` (problems the user has already seen) are deprioritized: unseen
+ * problems come first, and seen ones are only used to top up when the unseen pool
+ * is too small — so a user cycling through a topic keeps getting fresh problems
+ * until the bank is exhausted, then the least-recently-shuffled repeats.
+ */
 export function pickRandomProblems(
   difficulty: Difficulty,
   topics: string[] = [],
   count = 3,
+  excludeTitles?: Set<string>,
 ): CodingProblem[] {
   const pool = filterProblems(difficulty, topics);
   const shuffled = [...pool].sort(() => Math.random() - 0.5);
-  return shuffled.slice(0, count);
+  if (!excludeTitles || excludeTitles.size === 0) return shuffled.slice(0, count);
+  const unseen = shuffled.filter((p) => !excludeTitles.has(p.title));
+  const seen = shuffled.filter((p) => excludeTitles.has(p.title));
+  return [...unseen, ...seen].slice(0, count);
 }
 
 /** Safe fallback when AI generation fails and no topics were chosen. */

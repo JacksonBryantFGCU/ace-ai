@@ -25,6 +25,13 @@ export const codingProblemSchema = z.object({
     .optional(),
   constraints: z.array(z.string()).optional(),
   hints: z.array(z.string()).optional(),
+  /**
+   * A JS reference solution the model is asked to produce and self-check its
+   * test cases against. We do NOT execute it (no server runner by design) or
+   * expose it to the candidate — it's stripped after validation. Real
+   * execution-verification happens in the offline vetting pipeline.
+   */
+  referenceSolution: z.string().optional(),
 });
 
 export const generatedProblemsSchema = z.object({
