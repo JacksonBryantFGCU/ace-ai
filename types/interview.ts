@@ -108,4 +108,6 @@ export interface CodingProblem {
   testCases: TestCase[];
   examples?: ProblemExample[];
   constraints?: string[];
+  /** Progressive hints, revealed one at a time by the candidate on request. */
+  hints?: string[];
 }

@@ -24,6 +24,7 @@ export const codingProblemSchema = z.object({
     .array(z.object({ input: z.string(), output: z.string(), explanation: z.string().optional() }))
     .optional(),
   constraints: z.array(z.string()).optional(),
+  hints: z.array(z.string()).optional(),
 });
 
 export const generatedProblemsSchema = z.object({

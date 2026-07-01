@@ -1,4 +1,7 @@
-import { Check, ChevronLeft, ChevronRight, Lock } from "lucide-react";
+"use client";
+
+import { useEffect, useState } from "react";
+import { Check, ChevronLeft, ChevronRight, Lightbulb, Lock } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { CodingProblem } from "@/types/interview";
 
@@ -20,6 +23,13 @@ export function TechnicalPromptCard({
   onPrev: () => void;
   onNext: () => void;
 }) {
+  // How many hints the candidate has chosen to reveal for the current problem.
+  // Resets whenever the problem changes so hints don't leak across questions.
+  const [revealed, setRevealed] = useState(0);
+  useEffect(() => {
+    setRevealed(0);
+  }, [problem?.id]);
+
   if (!problem) {
     return (
       <div className="rounded-2xl border border-white/10 bg-white/5 p-5 text-sm text-gray-400">
@@ -62,6 +72,36 @@ export function TechnicalPromptCard({
             <li key={i}>{c}</li>
           ))}
         </ul>
+      ) : null}
+
+      {problem.hints && problem.hints.length > 0 ? (
+        <div className="space-y-2">
+          {problem.hints.slice(0, revealed).map((hint, i) => (
+            <div
+              key={i}
+              className="flex gap-2 rounded-lg border border-amber-400/20 bg-amber-400/10 p-2.5 text-xs leading-relaxed text-amber-100"
+            >
+              <Lightbulb className="mt-0.5 size-3.5 shrink-0 text-amber-300" aria-hidden />
+              <span>
+                <span className="font-semibold">Hint {i + 1}:</span> {hint}
+              </span>
+            </div>
+          ))}
+          {revealed < problem.hints.length ? (
+            <button
+              type="button"
+              onClick={() => setRevealed((n) => n + 1)}
+              className="flex items-center gap-1.5 rounded-lg border border-amber-400/30 px-3 py-1.5 text-xs font-medium text-amber-200 transition-colors hover:bg-amber-400/10"
+            >
+              <Lightbulb className="size-3.5" />
+              {revealed === 0
+                ? `Need a hint? (${problem.hints.length} available)`
+                : `Show next hint (${problem.hints.length - revealed} left)`}
+            </button>
+          ) : (
+            <p className="text-xs text-gray-500">All hints revealed.</p>
+          )}
+        </div>
       ) : null}
 
       <div className="mt-1 flex items-center justify-between">

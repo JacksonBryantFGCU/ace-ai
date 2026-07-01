@@ -35,6 +35,7 @@ Respond with a single JSON object: { "problems": [ ... ] }. Each problem must ha
 - "starterCode": object with keys "javascript", "typescript", "python", each a starter function stub that defines a function named exactly functionName (camelCase, even in Python).
 - "testCases": array of 3 objects, each { "input": [...args], "expected": <return value> }. "input" is the argument list spread into the function; "expected" is the exact return value. Use only JSON-serializable values.
 - "constraints": optional array of short strings
+- "hints": array of 2-3 short progressive hints, ordered from a gentle nudge to a near-spoiler approach. Do NOT include full code.
 
 Rules:
 - Test cases must be correct and deterministic. The reference solution called as functionName(...input) must return exactly "expected".

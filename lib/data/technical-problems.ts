@@ -18,6 +18,11 @@ export const TECHNICAL_PROBLEMS: CodingProblem[] = [
     functionName: "reverseString",
     examples: [{ input: '"hello"', output: '"olleh"' }],
     constraints: ["1 ≤ s.length ≤ 10^5"],
+    hints: [
+      "Think about the characters as a sequence you can index into from both ends.",
+      "Use two pointers — one at the start, one at the end — and swap as they move toward the middle.",
+      "Alternatively, split into characters, reverse the collection, and join back together.",
+    ],
     starterCode: {
       javascript: "function reverseString(s) {\n  // Your solution here\n}",
       typescript: "function reverseString(s: string): string {\n  // Your solution here\n}",
@@ -39,6 +44,11 @@ export const TECHNICAL_PROBLEMS: CodingProblem[] = [
     functionName: "twoSum",
     examples: [{ input: "nums = [2,7,11,15], target = 9", output: "[2,7]" }],
     constraints: ["Exactly one valid answer exists."],
+    hints: [
+      "A brute-force pair check works but is O(n²). Can you trade memory for speed?",
+      "As you scan, remember each number you've seen and the index it appeared at.",
+      "For each number, check whether target − number is already in your hash map.",
+    ],
     starterCode: {
       javascript: "function twoSum(nums, target) {\n  // Your solution here\n}",
       typescript: "function twoSum(nums: number[], target: number): number[] {\n  // Your solution here\n}",
@@ -60,6 +70,11 @@ export const TECHNICAL_PROBLEMS: CodingProblem[] = [
     functionName: "isValid",
     examples: [{ input: '"()[]{}"', output: "true" }],
     constraints: ["1 ≤ s.length ≤ 10^4"],
+    hints: [
+      "The most recently opened bracket must be the first one closed — that ordering is a clue.",
+      "A stack fits perfectly: push opening brackets, and on a closing bracket check the top.",
+      "If a closing bracket doesn't match the top of the stack (or the stack is empty), it's invalid. At the end the stack must be empty.",
+    ],
     starterCode: {
       javascript: "function isValid(s) {\n  // Your solution here\n}",
       typescript: "function isValid(s: string): boolean {\n  // Your solution here\n}",
@@ -83,6 +98,11 @@ export const TECHNICAL_PROBLEMS: CodingProblem[] = [
     functionName: "maxSubArray",
     examples: [{ input: "[-2,1,-3,4,-1,2,1,-5,4]", output: "6", explanation: "[4,-1,2,1] sums to 6." }],
     constraints: ["1 ≤ nums.length ≤ 10^5"],
+    hints: [
+      "You can solve this in a single pass — no need to check every subarray.",
+      "Track the best sum ending at the current index; a running sum that goes negative only hurts you.",
+      "This is Kadane's algorithm: current = max(num, current + num), and keep the max current seen so far.",
+    ],
     starterCode: {
       javascript: "function maxSubArray(nums) {\n  // Your solution here\n}",
       typescript: "function maxSubArray(nums: number[]): number {\n  // Your solution here\n}",
@@ -104,6 +124,11 @@ export const TECHNICAL_PROBLEMS: CodingProblem[] = [
     functionName: "fizzBuzz",
     examples: [{ input: "n = 5", output: '["1","2","Fizz","4","Buzz"]' }],
     constraints: ["1 ≤ n ≤ 10^4"],
+    hints: [
+      "Loop from 1 to n and decide each entry independently.",
+      "Check divisibility by 3 and by 5 using the modulo operator.",
+      "Test the divisible-by-both case first, since it takes priority over the individual checks.",
+    ],
     starterCode: {
       javascript: "function fizzBuzz(n) {\n  // Your solution here\n}",
       typescript: "function fizzBuzz(n: number): string[] {\n  // Your solution here\n}",
@@ -124,6 +149,11 @@ export const TECHNICAL_PROBLEMS: CodingProblem[] = [
     functionName: "lengthOfLongestSubstring",
     examples: [{ input: '"abcabcbb"', output: "3", explanation: '"abc" has length 3.' }],
     constraints: ["0 ≤ s.length ≤ 5 * 10^4"],
+    hints: [
+      "A sliding window over the string lets you extend and shrink a candidate substring.",
+      "Keep a set (or map) of characters currently in the window.",
+      "When you hit a repeat, advance the window's left edge until the duplicate is gone, tracking the max length throughout.",
+    ],
     starterCode: {
       javascript: "function lengthOfLongestSubstring(s) {\n  // Your solution here\n}",
       typescript: "function lengthOfLongestSubstring(s: string): number {\n  // Your solution here\n}",
@@ -147,6 +177,11 @@ export const TECHNICAL_PROBLEMS: CodingProblem[] = [
     functionName: "trap",
     examples: [{ input: "[0,1,0,2,1,0,1,3,2,1,2,1]", output: "6" }],
     constraints: ["1 ≤ height.length ≤ 2 * 10^4"],
+    hints: [
+      "Water above a bar depends on the tallest bars to its left and right.",
+      "Water at index i = min(maxLeft, maxRight) − height[i], when positive.",
+      "Two pointers moving inward (advancing the side with the smaller max) computes this in O(n) time and O(1) space.",
+    ],
     starterCode: {
       javascript: "function trap(height) {\n  // Your solution here\n}",
       typescript: "function trap(height: number[]): number {\n  // Your solution here\n}",
@@ -167,6 +202,11 @@ export const TECHNICAL_PROBLEMS: CodingProblem[] = [
     functionName: "mergeIntervals",
     examples: [{ input: "[[1,3],[2,6],[8,10],[15,18]]", output: "[[1,6],[8,10],[15,18]]" }],
     constraints: ["1 ≤ intervals.length ≤ 10^4"],
+    hints: [
+      "Overlaps are much easier to spot once the intervals are in a predictable order.",
+      "Sort by start time first, then walk through them once.",
+      "Merge the current interval into the previous one when its start ≤ the previous end, extending the end to the max of the two.",
+    ],
     starterCode: {
       javascript: "function mergeIntervals(intervals) {\n  // Your solution here\n}",
       typescript: "function mergeIntervals(intervals: number[][]): number[][] {\n  // Your solution here\n}",
@@ -209,6 +249,11 @@ export const TECHNICAL_PROBLEMS: CodingProblem[] = [
     functionName: "coinChange",
     examples: [{ input: "coins = [1,2,5], amount = 11", output: "3", explanation: "11 = 5 + 5 + 1." }],
     constraints: ["0 ≤ amount ≤ 10^4"],
+    hints: [
+      "Greedily taking the largest coin doesn't always work — think about building up smaller amounts first.",
+      "Define dp[x] = fewest coins to make amount x, with dp[0] = 0.",
+      "For each amount, try every coin: dp[x] = min(dp[x], dp[x − coin] + 1). Return dp[amount] or -1 if it stays unreachable.",
+    ],
     starterCode: {
       javascript: "function coinChange(coins, amount) {\n  // Your solution here\n}",
       typescript: "function coinChange(coins: number[], amount: number): number {\n  // Your solution here\n}",
