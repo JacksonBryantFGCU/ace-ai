@@ -27,13 +27,13 @@ export const metadata: Metadata = {
     url: siteConfig.url,
     title: siteConfig.title,
     description: siteConfig.description,
-    images: [siteConfig.ogImage],
+    // Social card comes from app/opengraph-image.tsx (file-based convention).
   },
   twitter: {
     card: "summary_large_image",
     title: siteConfig.title,
     description: siteConfig.description,
-    images: [siteConfig.ogImage],
+    // Card image comes from app/twitter-image.tsx.
   },
 };
 

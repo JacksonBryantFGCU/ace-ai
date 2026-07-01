@@ -11,7 +11,6 @@ export const siteConfig = {
     "Practice realistic AI-powered voice engineering interviews. Behavioral and technical, with instant scoring.",
   // Public base URL of the deployment. Used for metadata, sitemap, robots, OG.
   url: publicEnv.siteUrl,
-  ogImage: "/og.png",
 } as const;
 
 export type SiteConfig = typeof siteConfig;
