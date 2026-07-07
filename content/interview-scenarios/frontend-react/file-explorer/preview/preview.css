@@ -1,0 +1,41 @@
+/* File Explorer — a VS Code-style tree.
+   Sky-blue accent; the tree sits in a panel, rows get hover + selection states,
+   and the expand toggle reads as a quiet chevron. */
+.preview-canvas {
+  --preview-accent: #0284c7;
+  --preview-canvas: #e9f1f8;
+}
+
+.preview-frame [role="tree"] {
+  max-width: 460px;
+  padding: 6px;
+  border: 1px solid var(--preview-border);
+  border-radius: var(--preview-radius);
+  background: var(--preview-surface);
+}
+.preview-frame [role="treeitem"] {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding-block: 3px;
+  padding-right: 6px;
+  border-radius: 6px;
+  cursor: default;
+}
+.preview-frame [role="treeitem"]:hover {
+  background: var(--preview-surface-muted);
+}
+.preview-frame [role="treeitem"][aria-selected="true"] {
+  background: color-mix(in srgb, var(--preview-accent) 16%, transparent);
+}
+.preview-frame [role="treeitem"] button {
+  width: 18px;
+  padding: 0 2px;
+  border: none;
+  background: transparent;
+  color: var(--preview-muted);
+}
+.preview-frame [role="treeitem"] button:hover {
+  background: transparent;
+  color: var(--preview-fg);
+}

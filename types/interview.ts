@@ -1,6 +1,6 @@
 /**
  * Single source of truth for interview-domain types, replacing the old FE/BE
- * duplication. Shapes here are derived from the rebuild plan (docs/nextjs-rebuild-plan).
+ * duplication. Shapes here are documented in docs/README.md.
  *
  * TODO(port): reconcile exact field names/optionality against the original
  * `aiService` / Vapi types when porting server logic (Phase 3) and the voice
@@ -27,10 +27,12 @@ export interface VapiInterviewConfig {
   questionType: QuestionType;
   /** Interviewer persona id (see `lib/constants` roster). */
   interviewer: string;
-  /** Coding language for technical interviews. */
-  language?: ProgrammingLanguage;
-  /** Optional topic filters; when empty, problems are AI-generated. */
-  topics?: string[];
+  /**
+   * For technical interviews: the exact scenario the candidate chose to practice.
+   * When present, the technical route loads this scenario directly instead of
+   * running the selector. Absent for behavioral interviews (and older drafts).
+   */
+  scenarioSlug?: string;
 }
 
 /** One turn in a voice interview transcript. */
@@ -68,21 +70,6 @@ export interface VapiAnalysisResult {
   questionBreakdown: QuestionBreakdown[];
 }
 
-/** A single test case for a coding problem. `expected` is the canonical field. */
-export interface TestCase {
-  input: unknown[];
-  expected: unknown;
-  /** Optional human description (e.g. for example rendering). */
-  description?: string;
-}
-
-/** A worked example shown alongside a coding problem. */
-export interface ProblemExample {
-  input: string;
-  output: string;
-  explanation?: string;
-}
-
 /**
  * A candidate's final code for one technical-interview problem, plus whether it
  * passed all provided test cases. Captured at the end of a technical interview
@@ -94,20 +81,4 @@ export interface CodeSubmission {
   language: ProgrammingLanguage;
   code: string;
   passed: boolean;
-}
-
-/** A coding problem presented in the technical interview (canonical shape). */
-export interface CodingProblem {
-  id: string;
-  title: string;
-  description: string;
-  difficulty: Difficulty;
-  topics: string[];
-  functionName: string;
-  starterCode?: Partial<Record<ProgrammingLanguage, string>>;
-  testCases: TestCase[];
-  examples?: ProblemExample[];
-  constraints?: string[];
-  /** Progressive hints, revealed one at a time by the candidate on request. */
-  hints?: string[];
 }

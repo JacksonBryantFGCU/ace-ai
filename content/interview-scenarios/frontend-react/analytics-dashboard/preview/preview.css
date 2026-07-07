@@ -1,0 +1,34 @@
+/* Analytics Dashboard — metric summary + event log.
+   Purple accent; the metrics region becomes a responsive card grid and the
+   event log a clean, bordered table. */
+.preview-canvas {
+  --preview-accent: #9333ea;
+  --preview-canvas: #f2ecfa;
+}
+
+.preview-frame section[aria-label="Metrics"] {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 12px;
+  margin-bottom: 18px;
+}
+.preview-frame section[aria-label="Metrics"] > * {
+  padding: 14px 16px;
+  border: 1px solid var(--preview-border);
+  border-radius: var(--preview-radius);
+  background: var(--preview-surface);
+  box-shadow: var(--preview-shadow);
+}
+
+.preview-frame table {
+  overflow: hidden;
+  border: 1px solid var(--preview-border);
+  border-radius: var(--preview-radius);
+  background: var(--preview-surface);
+}
+.preview-frame thead th {
+  background: var(--preview-surface-muted);
+}
+.preview-frame tbody tr:hover {
+  background: color-mix(in srgb, var(--preview-accent) 8%, transparent);
+}

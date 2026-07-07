@@ -22,40 +22,47 @@ function toIsoDate(ts: string | Date): string {
   return d.toISOString().slice(0, 10);
 }
 
-/** Headline counters. Mirrors the legacy rounding and "unknown success" handling. */
+/**
+ * Minimum overall score (0–100) that counts as a "pass." Matches the green
+ * threshold `scoreTone` already uses elsewhere, so "passing" here is the same
+ * bar already shown as a good score throughout the app.
+ */
+export const PASSING_SCORE = 80;
+
+/** Headline counters. A row "passes" if it scored >= `PASSING_SCORE`; an explicit `success: false` (a failed/errored run) never counts as a pass regardless of score. */
 export function computeUserMetrics(rows: AnalyticsRow[]): UserMetrics {
   const total = rows.length;
   if (total === 0) {
     return { totalInterviews: 0, successRate: 0, errorRate: 0, averageDurationMs: 0, averageScore: 0 };
   }
 
-  let successCount = 0;
-  let ratedCount = 0; // rows with an explicit boolean success value
+  let passCount = 0;
+  let ratedCount = 0; // rows with a determinable pass/fail outcome
   let durationSum = 0;
   let durationCount = 0;
   let scoreSum = 0;
   let scoreCount = 0;
 
   for (const row of rows) {
-    // success === null → unknown state, excluded from the rate.
-    if (row.success === true) {
-      successCount += 1;
+    const score = row.result?.score;
+    // No score and not an explicit failure → unknown outcome, excluded from the rate.
+    if (row.success === false) {
       ratedCount += 1;
-    } else if (row.success === false) {
+    } else if (typeof score === "number") {
       ratedCount += 1;
+      if (score >= PASSING_SCORE) passCount += 1;
     }
     if (typeof row.duration_ms === "number") {
       durationSum += row.duration_ms;
       durationCount += 1;
     }
-    const score = row.result?.score;
     if (typeof score === "number") {
       scoreSum += score;
       scoreCount += 1;
     }
   }
 
-  const successRate = ratedCount > 0 ? Math.round((successCount / ratedCount) * 10000) / 100 : 0;
+  const successRate = ratedCount > 0 ? Math.round((passCount / ratedCount) * 10000) / 100 : 0;
   return {
     totalInterviews: total,
     successRate,

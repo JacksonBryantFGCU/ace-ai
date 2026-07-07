@@ -1,0 +1,40 @@
+/* Shopping Cart — product list + running cart.
+   Amber accent; each section is a panel, "Add to Cart" is the primary action,
+   and line rows are separated by hairlines. */
+.preview-canvas {
+  --preview-accent: #d97706;
+  --preview-canvas: #f7f2ea;
+}
+
+.preview-frame section {
+  flex: 1;
+  padding: 14px 16px;
+  border: 1px solid var(--preview-border);
+  border-radius: var(--preview-radius);
+  background: var(--preview-surface-muted);
+}
+.preview-frame section h2 {
+  margin: 0 0 10px;
+  font-size: 15px;
+}
+.preview-frame section li {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 0;
+  border-bottom: 1px solid var(--preview-border);
+}
+.preview-frame section li:last-child {
+  border-bottom: none;
+}
+.preview-frame section li button {
+  margin-left: auto;
+  background: var(--preview-accent);
+  border-color: var(--preview-accent);
+  color: var(--preview-accent-contrast);
+  font-weight: 600;
+}
+.preview-frame section li button:hover {
+  background: var(--preview-accent);
+  filter: brightness(0.96);
+}

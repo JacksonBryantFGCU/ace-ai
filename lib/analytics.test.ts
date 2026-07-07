@@ -60,11 +60,28 @@ describe("computeUserMetrics", () => {
     expect(m.averageDurationMs).toBe(2000); // (1000 + 3000) / 2
   });
 
-  it("computes success/error rate only over rated (non-null) rows", () => {
-    const rows = [row({ success: true }), row({ success: false }), row({ success: null })];
+  it("counts a row as passing only when its score meets PASSING_SCORE", () => {
+    const rows = [
+      row({ result: result({ score: 80 }) }), // exactly at the bar: passes
+      row({ result: result({ score: 79 }) }), // just under: fails
+      row({ result: result({ score: 95 }) }), // well above: passes
+    ];
     const m = computeUserMetrics(rows);
-    expect(m.successRate).toBe(50); // 1 of 2 rated
-    expect(m.errorRate).toBe(50);
+    expect(m.successRate).toBe(66.67); // 2 of 3 rated
+    expect(m.errorRate).toBe(33.33);
+  });
+
+  it("excludes rows with no determinable outcome (no score, not an explicit failure)", () => {
+    const rows = [row({ result: result({ score: 80 }) }), row({ result: null, success: null })];
+    const m = computeUserMetrics(rows);
+    expect(m.totalInterviews).toBe(2);
+    expect(m.successRate).toBe(100); // 1 of 1 rated
+  });
+
+  it("an explicit success: false never counts as a pass, regardless of score", () => {
+    const rows = [row({ success: false, result: result({ score: 100 }) })];
+    const m = computeUserMetrics(rows);
+    expect(m.successRate).toBe(0);
   });
 });
 

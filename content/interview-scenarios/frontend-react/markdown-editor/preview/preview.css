@@ -1,0 +1,46 @@
+/* Markdown Editor — source + live preview.
+   Indigo accent; a real editor feel for the textarea and clean typographic
+   defaults for the rendered markdown. */
+.preview-canvas {
+  --preview-accent: #4f46e5;
+  --preview-canvas: #eef0f6;
+}
+
+.preview-frame textarea {
+  min-height: 260px;
+  padding: 12px 14px;
+  border: 1px solid var(--preview-border);
+  border-radius: var(--preview-radius);
+  background: var(--preview-surface);
+  line-height: 1.5;
+  resize: vertical;
+}
+
+/* Rendered-preview typography. */
+.preview-frame h1,
+.preview-frame h2,
+.preview-frame h3 {
+  margin: 0.6em 0 0.3em;
+}
+.preview-frame code {
+  padding: 0.1em 0.35em;
+  border-radius: 4px;
+  background: var(--preview-surface-muted);
+  font-size: 0.9em;
+}
+.preview-frame pre {
+  overflow: auto;
+  padding: 12px 14px;
+  border-radius: 8px;
+  background: var(--preview-surface-muted);
+}
+.preview-frame pre code {
+  padding: 0;
+  background: transparent;
+}
+.preview-frame blockquote {
+  margin: 0.5em 0;
+  padding-left: 12px;
+  border-left: 3px solid var(--preview-border);
+  color: var(--preview-muted);
+}

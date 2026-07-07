@@ -12,21 +12,18 @@ import {
   QUESTION_TYPES,
   ROLE_LABELS,
   STRICTNESS_LEVELS,
-  TOPIC_CATEGORIES,
   VALID_ROLES,
   getInterviewer,
   type EngineerRole,
 } from "@/lib/constants";
-import { EXECUTABLE_LANGUAGES, LANGUAGES } from "@/lib/languages";
 import { titleCase } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
-import { StopSlider } from "@/components/setup/stop-slider";
 import { InterviewerCard } from "@/components/setup/interviewer-card";
+import { StopSlider } from "@/components/setup/stop-slider";
 import type {
   Difficulty,
   ExperienceLevel,
-  ProgrammingLanguage,
   QuestionType,
   Strictness,
   VapiInterviewConfig,
@@ -53,8 +50,6 @@ export function SetupForm({
   const [strictness, setStrictness] = useState<Strictness>("balanced");
   const [experience, setExperience] = useState<ExperienceLevel>("junior");
   const [interviewerId, setInterviewerId] = useState<string>(INTERVIEWERS[0]!.id);
-  const [language, setLanguage] = useState<ProgrammingLanguage>("javascript");
-  const [topics, setTopics] = useState<string[]>([]);
   const [previewingId, setPreviewingId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [upgradeBlocked, setUpgradeBlocked] = useState(locked);
@@ -141,10 +136,6 @@ export function SetupForm({
     }
   }
 
-  function toggleTopic(id: string) {
-    setTopics((prev) => (prev.includes(id) ? prev.filter((t) => t !== id) : [...prev, id]));
-  }
-
   function handleStart() {
     setError(null);
     previewCleanupRef.current?.();
@@ -155,8 +146,6 @@ export function SetupForm({
       strictness,
       questionType,
       interviewer: interviewerId,
-      // Language + focus topics only apply to technical (coding) interviews.
-      ...(questionType === "technical" ? { language, topics } : {}),
     };
     startTransition(async () => {
       const res = await saveSetupDraft(config);
@@ -169,9 +158,9 @@ export function SetupForm({
   }
 
   return (
-    <div className="grid gap-6 lg:grid-cols-2">
+    <div className="grid items-stretch gap-6 lg:grid-cols-2">
       {/* Configuration panel */}
-      <div className="glass-card space-y-8 p-8">
+      <div className="glass-card h-full space-y-8 p-8">
         <div>
           <label htmlFor="role" className="mb-3 block text-sm font-medium text-gray-700">
             Role
@@ -215,65 +204,26 @@ export function SetupForm({
           </div>
         </div>
 
-        {questionType === "technical" ? (
-          <>
-            <div>
-              <label htmlFor="language" className="mb-3 block text-sm font-medium text-gray-700">
-                Language
-              </label>
-              <div className="relative">
-                <select
-                  id="language"
-                  value={language}
-                  onChange={(e) => setLanguage(e.target.value as ProgrammingLanguage)}
-                  className="w-full appearance-none rounded-xl border border-white/60 bg-white/60 py-3 pr-10 pl-4 text-gray-900 shadow-sm backdrop-blur-sm focus:border-blue-400 focus:ring-2 focus:ring-blue-400/20 focus:outline-none"
-                >
-                  {EXECUTABLE_LANGUAGES.map((l) => (
-                    <option key={l} value={l}>
-                      {LANGUAGES[l].label}
-                    </option>
-                  ))}
-                </select>
-                <ChevronDown className="pointer-events-none absolute top-1/2 right-4 size-4 -translate-y-1/2 text-gray-500" />
-              </div>
-            </div>
+        <div className="rounded-xl border border-white/60 bg-white/50 p-4">
+          <p className="text-sm font-medium text-gray-800">
+            {questionType === "technical" ? "Scenario selection comes next" : "Behavioral interview ready"}
+          </p>
+          <p className="mt-1 text-sm leading-relaxed text-gray-600">
+            {questionType === "technical"
+              ? "Continue to a focused scenario picker with role-aware search and filters."
+              : "Continue to start your voice interview with the selected interviewer."}
+          </p>
+        </div>
 
-            <div>
-              <div className="mb-3 flex items-center justify-between">
-                <p className="text-sm font-medium text-gray-700">Focus Topics</p>
-                <span className="text-xs text-gray-400">
-                  {topics.length === 0 ? "All topics" : `${topics.length} selected`}
-                </span>
-              </div>
-              <div className="flex flex-wrap gap-2">
-                {TOPIC_CATEGORIES.map((topic) => (
-                  <button
-                    key={topic.id}
-                    type="button"
-                    onClick={() => toggleTopic(topic.id)}
-                    aria-pressed={topics.includes(topic.id)}
-                    className={cn(
-                      "rounded-full px-3 py-1.5 text-xs font-medium transition-all",
-                      topics.includes(topic.id)
-                        ? "bg-gradient-to-r from-purple-500 to-blue-500 text-white shadow-sm"
-                        : "border border-gray-200 bg-white/60 text-gray-600 hover:bg-white/80",
-                    )}
-                  >
-                    {topic.label}
-                  </button>
-                ))}
-              </div>
-            </div>
-          </>
+        {questionType === "behavioral" ? (
+          <StopSlider
+            label="Question Difficulty"
+            options={DIFFICULTIES}
+            value={difficulty}
+            onChange={setDifficulty}
+            optionLabel={titleCase}
+          />
         ) : null}
-
-        <StopSlider
-          label="Question Difficulty"
-          options={DIFFICULTIES}
-          value={difficulty}
-          onChange={setDifficulty}
-          optionLabel={titleCase}
-        />
 
         <StopSlider
           label="Interviewer Strictness"
@@ -293,11 +243,11 @@ export function SetupForm({
       </div>
 
       {/* Interviewer panel */}
-      <div className="space-y-6">
-        <div className="glass-card p-8">
+      <div className="flex h-full flex-col gap-6">
+        <div className="glass-card flex flex-1 flex-col p-8">
           <h2 className="mb-6 text-lg font-semibold text-gray-900">Your Interviewer</h2>
 
-          <div className="mb-6 flex justify-center">
+          <div className="mb-6 flex flex-1 items-center justify-center">
             <div
               className={cn(
                 "flex size-32 items-center justify-center rounded-full bg-gradient-to-br shadow-lg",
@@ -356,14 +306,16 @@ export function SetupForm({
             </Link>
           </div>
         ) : (
-          <Button
-            variant="brand"
-            onClick={handleStart}
-            disabled={pending}
-            className="h-14 w-full rounded-xl text-base"
-          >
-            {pending ? "Starting…" : "Start Interview"}
-          </Button>
+          <div className="space-y-2">
+            <Button
+              variant="brand"
+              onClick={handleStart}
+              disabled={pending}
+              className="h-14 w-full rounded-xl text-base"
+            >
+              {pending ? "Continuing…" : "Continue"}
+            </Button>
+          </div>
         )}
       </div>
     </div>

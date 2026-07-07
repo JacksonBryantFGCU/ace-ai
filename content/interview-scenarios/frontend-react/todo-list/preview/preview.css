@@ -1,0 +1,60 @@
+/* Todo List — a focused productivity list.
+   Green accent, a primary "Add" action, roomy rows, and a quiet danger
+   affordance on delete. Layered on the shared `.preview-canvas` tokens. */
+.preview-canvas {
+  --preview-accent: #16a34a;
+  --preview-canvas: #eef3ee;
+}
+
+.preview-frame {
+  max-width: 560px;
+  margin: 0 auto;
+}
+
+.preview-frame form {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 14px;
+}
+.preview-frame form input {
+  flex: 1;
+}
+.preview-frame form button[type="submit"] {
+  background: var(--preview-accent);
+  border-color: var(--preview-accent);
+  color: var(--preview-accent-contrast);
+  font-weight: 600;
+}
+.preview-frame form button[type="submit"]:hover {
+  background: var(--preview-accent);
+  filter: brightness(0.95);
+}
+
+.preview-frame ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.preview-frame li {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 8px;
+  border: 1px solid transparent;
+  border-radius: 8px;
+}
+.preview-frame li:hover {
+  background: var(--preview-surface-muted);
+  border-color: var(--preview-border);
+}
+.preview-frame li span {
+  flex: 1;
+}
+.preview-frame li button {
+  border-color: transparent;
+  background: transparent;
+  color: #b91c1c;
+}
+.preview-frame li button:hover {
+  background: #fee2e2;
+}

@@ -4,10 +4,11 @@ import { usePathname } from "next/navigation";
 import { DashboardNavbar } from "@/components/dashboard-navbar";
 import { cn } from "@/lib/utils";
 
-/** Interview replay (`/interviews/<id>`) is the one dark surface inside the app
- *  group; the list (`/interviews`) and every other page stay light. */
+/** Dark surfaces inside the app group — the interview replay (`/interviews/<id>`)
+ *  and Analytics, both of which use the interview/evaluation design system. The
+ *  interviews list (`/interviews`), dashboard, and every other page stay light. */
 function isDarkSurface(pathname: string): boolean {
-  return /^\/interviews\/[^/]+/.test(pathname);
+  return /^\/interviews\/[^/]+/.test(pathname) || pathname === "/analytics";
 }
 
 /**

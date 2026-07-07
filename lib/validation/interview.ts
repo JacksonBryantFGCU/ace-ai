@@ -21,8 +21,8 @@ export const interviewConfigSchema = z.object({
   strictness: z.enum(["lenient", "balanced", "strict"]),
   questionType: z.enum(["behavioral", "technical"]),
   interviewer: z.string().min(1),
-  language: z.enum(["javascript", "typescript", "python", "java", "cpp", "bash"]).optional(),
-  topics: z.array(z.string()).optional(),
+  /** Chosen scenario slug for technical interviews (see VapiInterviewConfig). */
+  scenarioSlug: z.string().min(1).optional(),
 });
 
 /** A candidate's final code submission for one technical-interview problem. */

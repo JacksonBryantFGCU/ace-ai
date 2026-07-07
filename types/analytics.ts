@@ -19,7 +19,7 @@ export interface AnalyticsRow {
 /** Headline counters for the stat cards. */
 export interface UserMetrics {
   totalInterviews: number;
-  /** 0–100 percentage of rows with an explicit `success === true`. */
+  /** 0–100 percentage of rated rows that scored >= `PASSING_SCORE` (see `lib/analytics.ts`). */
   successRate: number;
   /** 0–100 percentage; complement of `successRate` over rated rows. */
   errorRate: number;

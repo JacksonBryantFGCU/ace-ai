@@ -17,6 +17,13 @@ const eslintConfig = defineConfig([
     "next-env.d.ts",
     // Legacy backend kept only as porting reference — not part of the app.
     "reference/**",
+    // Authored scenario fixtures: starter files are intentionally incomplete and
+    // solution/test files target the engine-injected harness (not npm packages).
+    // They are transpiled by the engine at runtime and gated by `scenario:check`,
+    // not the app's lint/typecheck. (Mirrors the `content` tsconfig exclude.)
+    "content/**",
+    // Generated: embedded React/csstype type declarations for Monaco.
+    "lib/monaco/generated-libs.ts",
   ]),
 ]);
 

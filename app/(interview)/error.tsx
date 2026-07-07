@@ -5,7 +5,7 @@ import { useEffect } from "react";
 import { Button, buttonVariants } from "@/components/ui/button";
 
 /**
- * Error boundary for live interview routes. Problem-generation / setup-resolution
+ * Error boundary for live interview routes. Setup-resolution / scenario-load
  * failures recover back to setup.
  */
 export default function InterviewError({ error, reset }: { error: Error; reset: () => void }) {

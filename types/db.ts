@@ -1,6 +1,6 @@
 /**
  * Supabase row types (single source of truth), aligned to the live schema
- * verified for Phase 2 (`docs/setup/supabase.md` §3). jsonb columns are typed to
+ * verified in the Supabase setup notes summarized by `docs/README.md`. jsonb columns are typed to
  * their domain shapes.
  *
  * TODO(db): consider generating types from the Supabase schema once the data

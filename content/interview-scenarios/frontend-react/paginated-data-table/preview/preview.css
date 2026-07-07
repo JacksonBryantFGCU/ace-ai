@@ -1,0 +1,49 @@
+/* Transactions Table — filter + paginated ledger.
+   Teal accent; a bordered, zebra-striped table with an uppercase header,
+   right-aligned tabular amounts, and a tidy pagination row. */
+.preview-canvas {
+  --preview-accent: #0d9488;
+  --preview-canvas: #e9f2f1;
+}
+
+.preview-frame label {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 14px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--preview-muted);
+}
+.preview-frame table {
+  overflow: hidden;
+  border: 1px solid var(--preview-border);
+  border-radius: var(--preview-radius);
+  background: var(--preview-surface);
+}
+.preview-frame thead th {
+  background: var(--preview-surface-muted);
+}
+.preview-frame tbody tr:nth-child(even) {
+  background: color-mix(in srgb, var(--preview-accent) 5%, transparent);
+}
+.preview-frame tbody tr:hover {
+  background: color-mix(in srgb, var(--preview-accent) 11%, transparent);
+}
+.preview-frame th:nth-child(3),
+.preview-frame td:nth-child(3) {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+.preview-frame td:last-child {
+  text-transform: capitalize;
+}
+/* Pagination controls (the block right after the table). */
+.preview-frame table + * {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 12px;
+  color: var(--preview-muted);
+  font-size: 13px;
+}

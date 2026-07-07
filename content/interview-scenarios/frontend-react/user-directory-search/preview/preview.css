@@ -1,0 +1,36 @@
+/* User Directory Search — search field + results.
+   Cyan accent; a prominent pill search box and result rows presented as cards. */
+.preview-canvas {
+  --preview-accent: #0891b2;
+  --preview-canvas: #e8f2f5;
+}
+
+.preview-frame {
+  max-width: 560px;
+  margin: 0 auto;
+}
+.preview-frame input[type="search"] {
+  width: 100%;
+  padding: 10px 14px;
+  border: 1px solid var(--preview-border);
+  border-radius: 999px;
+  background: var(--preview-surface);
+  font-size: 15px;
+}
+.preview-frame ul {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 14px 0 0;
+  padding: 0;
+  list-style: none;
+}
+.preview-frame li {
+  padding: 10px 12px;
+  border: 1px solid var(--preview-border);
+  border-radius: var(--preview-radius);
+  background: var(--preview-surface);
+}
+.preview-frame li:hover {
+  border-color: color-mix(in srgb, var(--preview-accent) 45%, var(--preview-border));
+}

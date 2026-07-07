@@ -24,38 +24,40 @@ export function ScoreTrendChart({ data }: { data: ScoreTrendPoint[] }) {
     <div className="h-72 w-full">
       <ResponsiveContainer width="100%" height="100%">
         <LineChart data={points} margin={{ top: 8, right: 12, bottom: 4, left: -16 }}>
-          <CartesianGrid strokeDasharray="3 3" stroke="rgba(15,23,42,0.08)" vertical={false} />
+          <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.08)" vertical={false} />
           <XAxis
             dataKey="index"
-            tick={{ fill: "#6b7280", fontSize: 12 }}
+            tick={{ fill: "#8b95a3", fontSize: 12 }}
             tickLine={false}
-            axisLine={{ stroke: "rgba(15,23,42,0.12)" }}
+            axisLine={{ stroke: "rgba(255,255,255,0.12)" }}
           />
           <YAxis
             domain={[0, 100]}
-            tick={{ fill: "#6b7280", fontSize: 12 }}
+            tick={{ fill: "#8b95a3", fontSize: 12 }}
             tickLine={false}
             axisLine={false}
             width={40}
           />
           <Tooltip
-            cursor={{ stroke: "rgba(99,102,241,0.4)" }}
+            cursor={{ stroke: "rgba(59,130,246,0.4)" }}
             contentStyle={{
               borderRadius: 12,
-              border: "1px solid rgba(255,255,255,0.6)",
-              background: "rgba(255,255,255,0.9)",
+              border: "1px solid rgba(255,255,255,0.1)",
+              background: "rgba(14,17,22,0.95)",
               backdropFilter: "blur(8px)",
               fontSize: 13,
             }}
+            labelStyle={{ color: "#c4cad3" }}
+            itemStyle={{ color: "#e6e9ee" }}
             labelFormatter={(value) => `Interview ${value}`}
             formatter={(value) => [value as number, "Score"]}
           />
           <Line
             type="monotone"
             dataKey="score"
-            stroke="#6366f1"
+            stroke="#3b82f6"
             strokeWidth={2.5}
-            dot={{ r: 3, fill: "#6366f1" }}
+            dot={{ r: 3, fill: "#3b82f6" }}
             activeDot={{ r: 5 }}
           />
         </LineChart>

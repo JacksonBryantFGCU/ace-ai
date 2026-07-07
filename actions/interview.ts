@@ -7,8 +7,13 @@ import { rateLimit } from "@/server/rate-limit";
 import { canStartInterview } from "@/server/entitlements";
 import { analyzeVapiTranscript } from "@/server/ai/evaluate";
 import { saveInterview } from "@/server/storage";
-import { clearDraft, saveDraft } from "@/server/interview-draft";
+import { clearDraft, readDraft, saveDraft } from "@/server/interview-draft";
+import { loadScenario } from "@/server/scenarios/load";
 import { evaluateInputSchema, firstIssue, interviewConfigSchema } from "@/lib/validation/interview";
+import { routeForSetupDraft } from "@/lib/interview-routing";
+import { scenarioToCandidate } from "@/lib/scenarios/selection/adapters";
+import { roleMatchForScenario } from "@/lib/scenarios/selection/roles";
+import { isPublicScenario } from "@/lib/scenarios/visibility";
 import type {
   CodeSubmission,
   TranscriptEntry,
@@ -49,7 +54,92 @@ export async function saveSetupDraft(
   await saveDraft(parsed.data);
 
   // redirect() throws — keep it outside any try/catch.
-  redirect(parsed.data.questionType === "technical" ? "/technical-interview" : "/interview/voice");
+  redirect(routeForSetupDraft(parsed.data));
+}
+
+export type ChooseTechnicalScenarioResult = { ok: false; error: string };
+
+export async function chooseTechnicalScenario(scenarioSlug: string): Promise<ChooseTechnicalScenarioResult | void> {
+  const user = await requireUser();
+  const draft = await readDraft();
+  if (!draft || draft.questionType !== "technical") {
+    return { ok: false, error: "Start a technical setup before choosing a scenario." };
+  }
+
+  const entitlement = await canStartInterview(user.id, user.email);
+  if (!entitlement.allowed) {
+    return {
+      ok: false,
+      error: "You've used your free interviews. Get a pass for unlimited practice.",
+    };
+  }
+
+  let loaded;
+  try {
+    loaded = await loadScenario(scenarioSlug, { includeAuthorOnly: false });
+  } catch {
+    return { ok: false, error: "That scenario is no longer available." };
+  }
+
+  if (!isPublicScenario(loaded.scenario)) {
+    return { ok: false, error: "That scenario is no longer available." };
+  }
+
+  const candidate = scenarioToCandidate(loaded.scenario, loaded.slug);
+  if (!roleMatchForScenario(candidate, draft.role).allowed) {
+    return { ok: false, error: "That scenario is not available for the selected role." };
+  }
+
+  await saveDraft({ ...draft, difficulty: loaded.scenario.difficulty, scenarioSlug: loaded.slug });
+  redirect("/technical-interview");
+}
+
+export type SaveScenarioResult = { ok: true; id: string } | { ok: false; error: string };
+
+/** Client-supplied, pre-computed scenario record (mapped by `lib/scenarios/interview-record`). */
+export interface SaveScenarioInput {
+  config: VapiInterviewConfig;
+  result: VapiAnalysisResult;
+  transcript: TranscriptEntry[];
+  submissions: CodeSubmission[];
+  metrics: { startedAt?: number; completedAt?: number; durationMs?: number; questionCount?: number };
+}
+
+/**
+ * Persist a completed Scenario Runtime interview so it appears in Past Interviews,
+ * the dashboard, and analytics. Unlike `evaluateInterview` the score is already
+ * computed by the client evaluation engine (automated checks + AI review), so this
+ * only authenticates, validates the config, saves, and revalidates read caches.
+ */
+export async function saveScenarioInterview(input: SaveScenarioInput): Promise<SaveScenarioResult> {
+  const user = await requireUser();
+
+  const parsedConfig = interviewConfigSchema.safeParse(input.config);
+  if (!parsedConfig.success) {
+    return { ok: false, error: firstIssue(parsedConfig.error) };
+  }
+
+  try {
+    const { id } = await saveInterview(user.id, parsedConfig.data, input.result, input.transcript, {
+      startedAt: input.metrics.startedAt,
+      completedAt: input.metrics.completedAt,
+      durationMs: input.metrics.durationMs,
+      questionCount: input.metrics.questionCount,
+      success: true,
+      submissions: input.submissions.length > 0 ? input.submissions : undefined,
+    });
+
+    // Consume the setup draft so refreshing the interview route can't replay it.
+    await clearDraft();
+
+    revalidateTag(`interviews:${user.id}`, "max");
+    revalidateTag(`dashboard:${user.id}`, "max");
+
+    return { ok: true, id };
+  } catch (error) {
+    console.error("saveScenarioInterview failed:", error);
+    return { ok: false, error: "Failed to save interview" };
+  }
 }
 
 export type EvaluateInterviewResult =

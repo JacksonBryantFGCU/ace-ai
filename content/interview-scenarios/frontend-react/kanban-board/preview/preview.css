@@ -1,0 +1,62 @@
+/* Kanban Board — three workflow columns.
+   Violet accent; columns become soft panels, headers read as quiet labels,
+   cards float on a surface, and add-card is the primary action. */
+.preview-canvas {
+  --preview-accent: #7c3aed;
+  --preview-canvas: #f0eefb;
+}
+
+.preview-frame > div {
+  align-items: flex-start;
+}
+
+.preview-frame section {
+  padding: 12px;
+  border: 1px solid var(--preview-border);
+  border-radius: var(--preview-radius);
+  background: var(--preview-surface-muted);
+}
+.preview-frame section h2 {
+  margin: 0 0 10px;
+  font-size: 12px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--preview-muted);
+}
+.preview-frame section li {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  border-radius: 8px;
+  background: var(--preview-surface);
+  box-shadow: var(--preview-shadow);
+}
+.preview-frame section li span {
+  flex: 1;
+}
+.preview-frame section li button {
+  padding: 2px 6px;
+  border: none;
+  background: transparent;
+  color: var(--preview-muted);
+  font-size: 16px;
+  line-height: 1;
+}
+.preview-frame section li button:hover {
+  background: transparent;
+  color: #dc2626;
+}
+.preview-frame section form {
+  display: flex;
+  gap: 6px;
+  margin-top: 8px;
+}
+.preview-frame section form input {
+  flex: 1;
+  min-width: 0;
+}
+.preview-frame section form button {
+  background: var(--preview-accent);
+  border-color: var(--preview-accent);
+  color: var(--preview-accent-contrast);
+}

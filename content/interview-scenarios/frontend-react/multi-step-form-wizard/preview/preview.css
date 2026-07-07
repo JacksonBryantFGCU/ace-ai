@@ -1,0 +1,44 @@
+/* Onboarding Wizard — a stepped form.
+   Blue accent; a centered column of stacked, labeled fields with full-width
+   inputs and a clear step heading. */
+.preview-canvas {
+  --preview-accent: #2563eb;
+  --preview-canvas: #eaf0fb;
+}
+
+.preview-frame {
+  max-width: 520px;
+  margin: 0 auto;
+}
+.preview-frame h2 {
+  margin: 0 0 6px;
+  font-size: 18px;
+}
+.preview-frame label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-top: 14px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--preview-muted);
+}
+.preview-frame label input,
+.preview-frame label select {
+  font-weight: 400;
+  color: var(--preview-fg);
+}
+.preview-frame input,
+.preview-frame select {
+  width: 100%;
+}
+.preview-frame button {
+  margin-top: 18px;
+  margin-right: 8px;
+}
+.preview-frame button[type="submit"] {
+  background: var(--preview-accent);
+  border-color: var(--preview-accent);
+  color: var(--preview-accent-contrast);
+  font-weight: 600;
+}
