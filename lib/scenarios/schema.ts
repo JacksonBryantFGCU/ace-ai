@@ -35,6 +35,9 @@ export const ENGINE_IDS = ["react", "node", "python", "java", "csharp", "sql"] a
 /** Databases a scenario can provision for its engine (Phase 9). */
 export const DATABASE_ENGINES = ["sqlite"] as const;
 export const SCENARIO_VISIBILITIES = ["public", "internal"] as const;
+export const SCENARIO_TYPES = ["frontend", "backend", "fullstack"] as const;
+export const EXECUTION_MODES = ["single", "fullstack"] as const;
+export const VERIFICATION_MODES = ["single-file", "scenario-step", "scenario-final"] as const;
 
 /** Harnesses whose `verify.functionName` is required (per frozen §3 rule 8). */
 const FUNCTION_NAME_HARNESSES = new Set(["node-vm", "python", "component"]);
@@ -103,7 +106,14 @@ export const scenarioSchema = z
       .optional(),
     runtime: z.enum(RUNTIMES).optional(),
     framework: z.string().min(1).optional(),
-    verification: z.object({ engine: z.enum(ENGINE_IDS) }).optional(),
+    verification: z
+      .object({
+        engine: z.enum(ENGINE_IDS),
+        mode: z.enum(VERIFICATION_MODES).optional(),
+        testGroups: z.array(z.enum(["backend", "frontend", "integration"])).optional(),
+        includePreviousSteps: z.boolean().optional(),
+      })
+      .optional(),
     database: z.object({ engine: z.enum(DATABASE_ENGINES) }).optional(),
     workspace: z.object({
       files: z.array(workspaceFileSchema).min(1),
@@ -113,6 +123,24 @@ export const scenarioSchema = z
     source: z.enum(["authored", "adapted"]).optional(),
     status: z.enum(["draft", "review", "verified"]),
     visibility: z.enum(SCENARIO_VISIBILITIES).optional(),
+    type: z.enum(SCENARIO_TYPES).optional(),
+    frontend: z
+      .object({
+        framework: z.string().min(1),
+        bundler: z.string().min(1).optional(),
+      })
+      .optional(),
+    backend: z
+      .object({
+        framework: z.string().min(1),
+        database: z.enum(DATABASE_ENGINES).optional(),
+      })
+      .optional(),
+    execution: z
+      .object({
+        mode: z.enum(EXECUTION_MODES),
+      })
+      .optional(),
     version: z.number().int().positive(),
     steps: z.array(stepSchema).min(1),
   })
@@ -128,6 +156,50 @@ export const scenarioSchema = z
     }
     if (s.summary.trim() === s.title.trim()) {
       ctx.addIssue({ code: "custom", path: ["summary"], message: "summary must differ from title" });
+    }
+
+    if (s.type === "fullstack") {
+      if (s.frontend?.framework !== "react") {
+        ctx.addIssue({
+          code: "custom",
+          path: ["frontend", "framework"],
+          message: "fullstack scenarios must declare frontend.framework: react",
+        });
+      }
+      if (s.frontend?.bundler !== "vite") {
+        ctx.addIssue({
+          code: "custom",
+          path: ["frontend", "bundler"],
+          message: "fullstack scenarios must declare frontend.bundler: vite",
+        });
+      }
+      if (s.backend?.framework !== "express") {
+        ctx.addIssue({
+          code: "custom",
+          path: ["backend", "framework"],
+          message: "fullstack scenarios must declare backend.framework: express",
+        });
+      }
+      if (s.backend?.database !== "sqlite") {
+        ctx.addIssue({
+          code: "custom",
+          path: ["backend", "database"],
+          message: "fullstack scenarios must declare backend.database: sqlite",
+        });
+      }
+      if (s.execution?.mode !== "fullstack") {
+        ctx.addIssue({
+          code: "custom",
+          path: ["execution", "mode"],
+          message: "fullstack scenarios must declare execution.mode: fullstack",
+        });
+      }
+    } else if (s.execution?.mode === "fullstack") {
+      ctx.addIssue({
+        code: "custom",
+        path: ["type"],
+        message: "execution.mode: fullstack requires type: fullstack",
+      });
     }
 
     // experienceMax >= experienceMin (frozen §6 rule 3).
@@ -158,6 +230,7 @@ export const scenarioSchema = z
 
     s.steps.forEach((step, i) => {
       const at = (key: string) => ["steps", i, key];
+      const fullstackManualStep = s.type === "fullstack" && step.verify.harness === "none";
 
       if (step.rubric && sumWeights(step.rubric) !== 100) {
         ctx.addIssue({ code: "custom", path: at("rubric"), message: "step rubric weights must sum to 100" });
@@ -179,13 +252,13 @@ export const scenarioSchema = z
         }
       } else {
         // implement | debug | refactor ⇒ executable harness + tests (frozen §6 rule 8).
-        if (step.verify.harness === "none") {
+        if (step.verify.harness === "none" && !fullstackManualStep) {
           ctx.addIssue({ code: "custom", path: at("verify"), message: `${step.kind} steps require an executable harness` });
         }
         if (step.verification !== "automated-tests" && step.verification !== "hybrid") {
           ctx.addIssue({ code: "custom", path: at("verification"), message: `${step.kind} steps must use verification automated-tests or hybrid` });
         }
-        if (!step.verify.tests || step.verify.tests.length === 0) {
+        if ((!step.verify.tests || step.verify.tests.length === 0) && !fullstackManualStep) {
           ctx.addIssue({ code: "custom", path: at("verify"), message: `${step.kind} steps must declare tests` });
         }
         if (FUNCTION_NAME_HARNESSES.has(step.verify.harness) && !step.verify.functionName) {
@@ -206,3 +279,4 @@ export type WorkspaceFileManifest = Scenario["workspace"]["files"][number];
 export type RubricCriterion = z.infer<typeof rubricCriterionSchema>;
 export type StepKind = (typeof STEP_KINDS)[number];
 export type FileRole = (typeof FILE_ROLES)[number];
+export type ScenarioType = (typeof SCENARIO_TYPES)[number];

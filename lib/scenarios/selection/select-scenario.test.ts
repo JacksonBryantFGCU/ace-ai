@@ -8,6 +8,7 @@ function cand(partial: Partial<ScenarioCandidate> & { slug: string }): ScenarioC
     interviewTypes: partial.interviewTypes ?? ["technical"],
     jobRoles: partial.jobRoles ?? ["frontend"],
     category: partial.category ?? "frontend-react",
+    type: partial.type ?? "frontend",
     difficulty: partial.difficulty ?? "medium",
     languages: partial.languages ?? ["typescript"],
     runtime: partial.runtime,
@@ -113,7 +114,7 @@ describe("selectScenario — fallback / relaxation", () => {
     const c = cand({ slug: "c", category: "other", languages: ["python"] });
     const result = selectScenario([c], criteria);
     expect(new Set(result?.relaxed)).toEqual(new Set(["category", "language"]));
-    expect(result?.penalty).toBe(1 + 2);
+    expect(result?.penalty).toBe(1 + 4);
   });
 
   it("honors a custom relaxation priority", () => {
@@ -187,11 +188,19 @@ describe("selectScenario — strict role boundaries", () => {
     expect(result).toBeNull();
   });
 
+  it("backend role never selects an explicitly fullstack scenario", () => {
+    const result = selectScenario(
+      [cand({ slug: "workflow", jobRoles: ["backend", "frontend"], category: "fullstack-react-node", type: "fullstack" })],
+      { ...criteria, jobRole: "backend", category: undefined },
+    );
+    expect(result).toBeNull();
+  });
+
   it("fullstack can select frontend, backend, and fullstack scenarios", () => {
     const pool = [
       cand({ slug: "frontend", jobRoles: ["frontend"], category: "frontend-react" }),
-      cand({ slug: "backend", jobRoles: ["backend"], category: "backend-node" }),
-      cand({ slug: "fullstack", jobRoles: ["fullstack"], category: "fullstack-node-react" }),
+      cand({ slug: "backend", jobRoles: ["backend"], category: "backend-node", type: "backend" }),
+      cand({ slug: "fullstack", jobRoles: ["fullstack"], category: "fullstack-node-react", type: "fullstack" }),
     ];
     const ranked = rankScenarios(pool, { ...criteria, jobRole: "fullstack", category: undefined });
     expect(ranked.map((item) => item.candidate.slug)).toEqual(["fullstack", "backend", "frontend"]);
@@ -201,12 +210,24 @@ describe("selectScenario — strict role boundaries", () => {
     const result = selectScenario(
       [
         cand({ slug: "frontend-medium", jobRoles: ["frontend"], category: "frontend-react", difficulty: "medium" }),
-        cand({ slug: "backend-hard", jobRoles: ["backend"], category: "backend-node", difficulty: "hard" }),
+        cand({ slug: "backend-hard", jobRoles: ["backend"], category: "backend-node", type: "backend", difficulty: "hard" }),
       ],
       { ...criteria, jobRole: "backend", difficulty: "medium", category: undefined },
     );
     expect(result?.candidate.slug).toBe("backend-hard");
     expect(result?.relaxed).toContain("difficulty");
+  });
+
+  it("can constrain scenario type explicitly", () => {
+    const ranked = rankScenarios(
+      [
+        cand({ slug: "frontend", type: "frontend", category: "frontend-react" }),
+        cand({ slug: "fullstack", type: "fullstack", category: "fullstack-react-node", jobRoles: ["fullstack"] }),
+      ],
+      { ...criteria, jobRole: "fullstack", category: undefined, scenarioType: "fullstack" },
+    );
+    expect(ranked[0]?.candidate.slug).toBe("fullstack");
+    expect(ranked[0]?.relaxed).toEqual([]);
   });
 
   it("no matching role returns a structured no-scenario result", () => {
@@ -222,8 +243,8 @@ describe("selectScenario — strict role boundaries", () => {
   });
 
   it("exact role match outranks category-only fallback", () => {
-    const exact = cand({ slug: "exact", jobRoles: ["backend"], category: "backend-node" });
-    const fallback = cand({ slug: "fallback", jobRoles: [], category: "backend-node" });
+    const exact = cand({ slug: "exact", jobRoles: ["backend"], category: "backend-node", type: "backend" });
+    const fallback = cand({ slug: "fallback", jobRoles: [], category: "backend-node", type: "backend" });
     const result = selectScenario([fallback, exact], {
       ...criteria,
       jobRole: "backend",
@@ -239,7 +260,7 @@ describe("selectScenario — real scenario regressions", () => {
     const result = selectScenario(
       [
         cand({ slug: "todo-list", jobRoles: ["frontend"], category: "frontend-react", difficulty: "easy" }),
-        cand({ slug: "notes-rest-api", jobRoles: ["backend"], category: "backend-node", difficulty: "easy" }),
+        cand({ slug: "notes-rest-api", jobRoles: ["backend"], category: "backend-node", type: "backend", difficulty: "easy" }),
       ],
       { interviewType: "technical", jobRole: "backend", difficulty: "easy", experience: "junior" },
     );

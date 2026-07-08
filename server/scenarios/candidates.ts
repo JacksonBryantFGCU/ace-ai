@@ -6,6 +6,7 @@ import { parseScenario } from "@/lib/scenarios/parse";
 import { findScenarioLocations } from "@/server/scenarios/load";
 import { scenarioToCandidate } from "@/lib/scenarios/selection/adapters";
 import { isPublicScenario } from "@/lib/scenarios/visibility";
+import { scenarioTypeOf } from "@/lib/scenarios/scenario-type";
 import type { ScenarioPickerOption } from "@/lib/scenarios/types";
 import type { ScenarioCandidate } from "@/lib/scenarios/selection/types";
 
@@ -44,6 +45,7 @@ export async function listScenarioPickerOptions(): Promise<ScenarioPickerOption[
       options.push({
         slug: loc.slug,
         category: scenario.category,
+        type: scenarioTypeOf(scenario),
         title: scenario.title,
         summary: scenario.summary,
         difficulty: scenario.difficulty,

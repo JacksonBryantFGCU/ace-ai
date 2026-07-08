@@ -47,6 +47,7 @@ export function validateSteps(bundle: AuthoredBundle): Diagnostic[] {
 
   steps.forEach((step, i) => {
     const at = `scenario.md → steps[${i}] (${step.id})`;
+    const fullstackManualStep = scenario.type === "fullstack" && step.verify.harness === "none";
 
     if (!KEBAB.test(step.id)) {
       out.push(
@@ -55,7 +56,7 @@ export function validateSteps(bundle: AuthoredBundle): Diagnostic[] {
     }
 
     // Verification steps must declare tests that exist.
-    const needsTests = step.verification === "automated-tests" || step.verification === "hybrid";
+    const needsTests = (step.verification === "automated-tests" || step.verification === "hybrid") && !fullstackManualStep;
     if (needsTests) {
       const tests = step.verify.tests ?? [];
       if (tests.length === 0) {

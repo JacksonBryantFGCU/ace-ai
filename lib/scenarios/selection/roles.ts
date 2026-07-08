@@ -3,12 +3,18 @@ export type ScenarioRoleFamily = "frontend" | "backend" | "fullstack" | "other";
 export interface ScenarioRoleMetadata {
   jobRoles: readonly string[];
   category: string;
+  type?: string;
 }
 
 export interface ScenarioRoleMatch {
   allowed: boolean;
   exact: boolean;
   fallback: boolean;
+  family: ScenarioRoleFamily;
+}
+
+export interface ScenarioTrackMatch {
+  allowed: boolean;
   family: ScenarioRoleFamily;
 }
 
@@ -39,6 +45,9 @@ export function categoryRoleFamily(category: string): ScenarioRoleFamily {
 }
 
 export function scenarioRoleFamily(scenario: ScenarioRoleMetadata): ScenarioRoleFamily {
+  if (scenario.type === "fullstack") return "fullstack";
+  if (scenario.type === "backend") return "backend";
+  if (scenario.type === "frontend") return "frontend";
   const roles = scenario.jobRoles.map((role) => normalizeScenarioRole(role)).filter(Boolean);
   const hasFrontend = roles.includes("frontend");
   const hasBackend = roles.includes("backend");
@@ -54,6 +63,16 @@ export function roleMatchForScenario(scenario: ScenarioRoleMetadata, requestedRo
   const family = scenarioRoleFamily(scenario);
   if (!requested) {
     return { allowed: true, exact: false, fallback: false, family };
+  }
+
+  if (scenario.type === "fullstack" && requested !== "fullstack") {
+    return { allowed: false, exact: false, fallback: false, family };
+  }
+  if (scenario.type === "backend" && requested === "frontend") {
+    return { allowed: false, exact: false, fallback: false, family };
+  }
+  if (scenario.type === "frontend" && requested === "backend") {
+    return { allowed: false, exact: false, fallback: false, family };
   }
 
   const roles = scenario.jobRoles.map((role) => normalizeScenarioRole(role)).filter(Boolean);
@@ -78,6 +97,21 @@ export function roleMatchForScenario(scenario: ScenarioRoleMetadata, requestedRo
     categoryRoleFamily(scenario.category) === "backend" ||
     categoryRoleFamily(scenario.category) === "fullstack";
   return { allowed: broadMatch, exact, fallback: !exact && broadMatch, family };
+}
+
+export function interviewTrackMatchForScenario(
+  scenario: ScenarioRoleMetadata,
+  requestedRole: string | undefined,
+): ScenarioTrackMatch {
+  const requested = normalizeScenarioRole(requestedRole);
+  const family = scenarioRoleFamily(scenario);
+  if (!requested) return { allowed: true, family };
+
+  if (requested === "fullstack") {
+    return { allowed: family === "fullstack", family };
+  }
+
+  return { allowed: roleMatchForScenario(scenario, requested).allowed, family };
 }
 
 export function noScenarioMessage(role: string | undefined): string {

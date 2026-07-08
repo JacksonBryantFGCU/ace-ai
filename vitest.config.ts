@@ -19,6 +19,11 @@ export default defineConfig({
     // via the Node/React engines (`scenario:check`), never as Vitest suites — but
     // content-level suites (e.g. preview coverage) are real Vitest tests, so only
     // the per-scenario `<category>/<slug>/tests/` folders are excluded here.
-    exclude: [...configDefaults.exclude, "reference/**", "content/interview-scenarios/*/*/tests/**"],
+    exclude: [
+      ...configDefaults.exclude,
+      "reference/**",
+      ".scenario-runtime/**",
+      "content/interview-scenarios/*/*/tests/**",
+    ],
   },
 });

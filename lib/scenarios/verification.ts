@@ -24,6 +24,9 @@ export type VerificationStatus =
   | "manual" // no automated engine yet — awaiting human confirmation
   | "unsupported"; // no engine registered for this harness
 
+export type VerificationMode = "single-file" | "scenario-step" | "scenario-final";
+export type VerificationGroupName = "backend" | "frontend" | "integration";
+
 export type TestCaseStatus = "passed" | "failed" | "skipped";
 
 export interface TestCaseResult {
@@ -52,6 +55,16 @@ export interface RubricScore {
   notes?: string;
 }
 
+export interface VerificationGroupResult {
+  name: VerificationGroupName;
+  ok: boolean;
+  command?: string;
+  output?: string;
+  durationMs?: number;
+  skipped?: boolean;
+  reason?: string;
+}
+
 export interface VerificationResult {
   /** Harness id that produced this result (e.g. "component"). */
   engine: string;
@@ -64,6 +77,10 @@ export interface VerificationResult {
   /** Human-facing note (e.g. why a result is manual). */
   message?: string;
   finishedAt: number;
+  mode?: VerificationMode;
+  scenarioSlug?: string;
+  stepIndex?: number;
+  groups?: VerificationGroupResult[];
 
   // ── Reserved for future evaluation combinations (kept optional & additive) ──
   /** Automated/interviewer rubric scores. */

@@ -23,7 +23,29 @@ export function VerificationResultCard({ result }: { result: VerificationResult 
 
       {result.message ? <p className="text-xs text-gray-400">{result.message}</p> : null}
 
-      {result.testResults.length > 0 ? (
+      {result.groups?.length ? (
+        <div className="space-y-2">
+          {result.groups.map((group) => (
+            <details key={group.name} className="rounded-md border border-white/10 bg-white/[0.03] p-2" open={!group.ok}>
+              <summary className="flex cursor-pointer list-none items-center justify-between gap-3 text-sm text-gray-200">
+                <span className="capitalize">{group.name}</span>
+                <span className={group.skipped ? "text-gray-400" : group.ok ? "text-green-400" : "text-red-400"}>
+                  {group.skipped ? "Skipped" : group.ok ? "Passed" : "Failed"}
+                </span>
+              </summary>
+              {group.reason ? <p className="mt-2 text-xs text-gray-400">{group.reason}</p> : null}
+              {group.command ? <p className="mt-2 break-all text-[11px] text-gray-500">{group.command}</p> : null}
+              {group.output ? (
+                <pre className="mt-2 max-h-40 overflow-auto whitespace-pre-wrap rounded bg-black/30 p-2 text-[11px] text-gray-300">
+                  {group.output}
+                </pre>
+              ) : null}
+            </details>
+          ))}
+        </div>
+      ) : null}
+
+      {result.groups?.length ? null : result.testResults.length > 0 ? (
         <ul className="space-y-1">
           {result.testResults.map((test) => (
             <li key={test.name} className="flex items-center gap-2 text-sm text-gray-200">

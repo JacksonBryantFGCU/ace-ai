@@ -5,7 +5,7 @@ import { loadScenario } from "@/server/scenarios/load";
 import { listScenarioCandidates } from "@/server/scenarios/candidates";
 import { selectScenarioResult } from "@/lib/scenarios/selection/select-scenario";
 import { criteriaFromConfig, scenarioToCandidate } from "@/lib/scenarios/selection/adapters";
-import { roleMatchForScenario } from "@/lib/scenarios/selection/roles";
+import { interviewTrackMatchForScenario } from "@/lib/scenarios/selection/roles";
 import { isPublicScenario } from "@/lib/scenarios/visibility";
 import { ScenarioInterview } from "@/components/scenario/scenario-interview";
 import { EmptyState } from "@/components/ui/empty-state";
@@ -64,7 +64,7 @@ async function loadChosenScenario(
     const loaded = await loadScenario(scenarioSlug, { includeAuthorOnly: false });
     if (!isPublicScenario(loaded.scenario)) return null;
     const candidate = scenarioToCandidate(loaded.scenario, loaded.slug);
-    return roleMatchForScenario(candidate, config.role).allowed ? { scenario: loaded } : null;
+    return interviewTrackMatchForScenario(candidate, config.role).allowed ? { scenario: loaded } : null;
   } catch {
     return null;
   }

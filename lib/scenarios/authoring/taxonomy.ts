@@ -37,6 +37,7 @@ export const KNOWN_CATEGORIES: readonly string[] = [
   "backend-python",
   "backend-sql",
   "fullstack",
+  "fullstack-react-node",
   "algorithms",
   "systems",
 ];

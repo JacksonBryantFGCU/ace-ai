@@ -13,6 +13,10 @@
     "scenario:lint": "tsx scripts/scenario-toolkit.ts lint",
     "scenario:check": "tsx scripts/scenario-toolkit.ts check",
     "scenario:doctor": "tsx scripts/scenario-toolkit.ts doctor",
+    "scenario:test:fullstack": "tsx scripts/fullstack-scenario-tests.ts all",
+    "scenario:test:fullstack:backend": "tsx scripts/fullstack-scenario-tests.ts backend",
+    "scenario:test:fullstack:frontend": "tsx scripts/fullstack-scenario-tests.ts frontend",
+    "scenario:test:fullstack:integration": "tsx scripts/fullstack-scenario-tests.ts integration",
     "generate:monaco-libs": "node scripts/generate-monaco-libs.mjs",
     "format": "prettier --write .",
     "format:check": "prettier --check ."

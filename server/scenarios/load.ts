@@ -1,5 +1,3 @@
-import "server-only";
-
 import ts from "typescript";
 import { readFileSync, readdirSync, existsSync } from "node:fs";
 import { join } from "node:path";
@@ -9,6 +7,7 @@ import { DEFAULT_PREVIEW_STORY } from "@/lib/scenarios/preview/types";
 import type { PreviewConfig, PreviewStory, ServedPreviewBundle } from "@/lib/scenarios/preview/types";
 import { API_PREVIEW_METHODS, type ApiPreviewConfig, type ApiPreviewExample } from "@/lib/scenarios/preview/api";
 import { isPublicScenario } from "@/lib/scenarios/visibility";
+import { scenarioTypeOf } from "@/lib/scenarios/scenario-type";
 import type { LoadedScenario, ScenarioOption, ScenarioSummary, ServedWorkspaceFile } from "@/lib/scenarios/types";
 
 export type { LoadedScenario, ScenarioOption, ScenarioSummary, ServedWorkspaceFile } from "@/lib/scenarios/types";
@@ -110,6 +109,7 @@ export async function listScenarios(): Promise<ScenarioSummary[]> {
       summaries.push({
         slug: loc.slug,
         category: loc.category,
+        type: scenarioTypeOf(scenario),
         title: scenario.title,
         summary: scenario.summary,
         difficulty: scenario.difficulty,
@@ -139,6 +139,7 @@ export async function listScenarioOptions(): Promise<ScenarioOption[]> {
       options.push({
         slug: loc.slug,
         category: loc.category,
+        type: scenarioTypeOf(scenario),
         title: scenario.title,
         summary: scenario.summary,
         difficulty: scenario.difficulty,

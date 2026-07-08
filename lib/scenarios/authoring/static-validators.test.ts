@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { scenarioSchema } from "@/lib/scenarios/schema";
 import { validateFrontmatter } from "@/lib/scenarios/authoring/frontmatter";
 import { validateExecution, validateDatabase } from "@/lib/scenarios/authoring/execution";
+import { validateFullstackContract } from "@/lib/scenarios/authoring/fullstack";
 import { validateWorkspace } from "@/lib/scenarios/authoring/workspace";
 import { validateSteps } from "@/lib/scenarios/authoring/steps";
 import { validateRubric } from "@/lib/scenarios/authoring/rubric";
@@ -70,6 +71,74 @@ function bundle(overrides: {
     schemaError: parsed.success ? null : parsed.error.issues.map((i) => i.message).join("; "),
     sections: {},
     files: { ...baseFiles(), ...overrides.files },
+  };
+}
+
+function fullstackBundle(overrides: {
+  frontmatter?: Record<string, unknown>;
+  files?: Record<string, string>;
+} = {}): AuthoredBundle {
+  const step = {
+    id: "step-1",
+    kind: "implement",
+    prompt: "Wire the UI to the API.",
+    verification: "automated-tests",
+    verify: {
+      harness: "component",
+      functionName: "App",
+      tests: ["tests/backend/step-1.test.ts", "tests/frontend/step-1.test.tsx", "tests/integration/step-1.spec.ts"],
+    },
+    weight: 100,
+    checkpoint: {
+      files: ["solution/step-1/backend/app.ts", "solution/step-1/frontend/App.tsx"],
+    },
+  };
+  const fm = {
+    ...baseFrontmatter(),
+    id: "fullstack-workflow",
+    title: "Fullstack Workflow",
+    summary: "Build a realistic workflow across an Express API and React UI.",
+    category: "fullstack-react-node",
+    skills: ["api", "react"],
+    jobRoles: ["fullstack"],
+    tags: ["framework:react", "framework:express"],
+    difficulty: "medium",
+    stack: { languages: ["typescript"], harness: "component" },
+    type: "fullstack",
+    frontend: { framework: "react", bundler: "vite" },
+    backend: { framework: "express", database: "sqlite" },
+    execution: { mode: "fullstack" },
+    workspace: {
+      files: [
+        { path: "backend/app.ts", role: "edit" },
+        { path: "frontend/App.tsx", role: "edit" },
+        { path: "shared/types.ts", role: "readonly" },
+      ],
+      entry: "frontend/App.tsx",
+    },
+    steps: [step],
+    ...overrides.frontmatter,
+  };
+  const parsed = scenarioSchema.safeParse(fm);
+  return {
+    slug: "fullstack-workflow",
+    category: "fullstack-react-node",
+    raw: "(test)",
+    frontmatter: fm,
+    scenario: parsed.success ? parsed.data : null,
+    schemaError: parsed.success ? null : parsed.error.issues.map((i) => i.message).join("; "),
+    sections: {},
+    files: {
+      "workspace/backend/app.ts": "export default {};",
+      "workspace/frontend/App.tsx": "export function App() { return null; }",
+      "workspace/shared/types.ts": "export interface Item { id: number }",
+      "tests/backend/step-1.test.ts": "test('api', () => {});",
+      "tests/frontend/step-1.test.tsx": "test('ui', () => {});",
+      "tests/integration/step-1.spec.ts": "test('flow', () => {});",
+      "solution/step-1/backend/app.ts": "export default {};",
+      "solution/step-1/frontend/App.tsx": "export function App() { return <div />; }",
+      ...overrides.files,
+    },
   };
 }
 
@@ -283,6 +352,52 @@ describe("workspace validation", () => {
   it("flags an undeclared workspace file present on disk", () => {
     const b = bundle({ files: { "workspace/Orphan.tsx": "export const x = 1;" } });
     expect(codes(validateWorkspace(b))).toContain("workspace/undeclared-file");
+  });
+});
+
+describe("fullstack contract validation", () => {
+  it("accepts the required backend/frontend workspace, tests, and checkpoints", () => {
+    const b = fullstackBundle();
+    expect(b.scenario).not.toBeNull();
+    const ds = [
+      ...validateFrontmatter(b),
+      ...validateWorkspace(b),
+      ...validateFullstackContract(b),
+      ...validateSteps(b),
+      ...validateRubric(b),
+    ];
+    expect(errors(ds)).toEqual([]);
+  });
+
+  it("flags missing fullstack structure without affecting non-fullstack scenarios", () => {
+    expect(validateFullstackContract(bundle())).toEqual([]);
+
+    const b = fullstackBundle({
+      frontmatter: {
+        workspace: { files: [{ path: "frontend/App.tsx", role: "edit" }], entry: "frontend/App.tsx" },
+        steps: [
+          {
+            id: "step-1",
+            kind: "implement",
+            prompt: "Wire the UI to the API.",
+            verification: "automated-tests",
+            verify: { harness: "component", functionName: "App", tests: ["tests/frontend/step-1.test.tsx"] },
+            weight: 100,
+            checkpoint: { files: ["solution/step-1/frontend/App.tsx"] },
+          },
+        ],
+      },
+    });
+    delete b.files["workspace/backend/app.ts"];
+    delete b.files["tests/backend/step-1.test.ts"];
+    delete b.files["tests/integration/step-1.spec.ts"];
+
+    const c = codes(validateFullstackContract(b));
+    expect(c).toContain("fullstack/missing-backend-workspace");
+    expect(c).toContain("fullstack/workspace-files-missing-side");
+    expect(c).toContain("fullstack/missing-backend-tests");
+    expect(c).toContain("fullstack/missing-integration-tests");
+    expect(c).toContain("fullstack/checkpoint-missing-side");
   });
 });
 

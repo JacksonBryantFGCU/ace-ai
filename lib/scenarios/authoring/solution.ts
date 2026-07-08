@@ -2,6 +2,7 @@ import { checkpointTargetPath, normalizeSolutionImports } from "@/lib/scenarios/
 import { ensureAuthoringDom } from "@/lib/scenarios/authoring/jsdom-env";
 import { resolveExecutionProfile } from "@/lib/scenarios/execution/profile";
 import { diag, type AuthoredBundle, type Diagnostic } from "@/lib/scenarios/authoring/types";
+import { scenarioTypeOf } from "@/lib/scenarios/scenario-type";
 import type { ExecutionContext } from "@/lib/scenarios/execution/context";
 import type { SnapshotFile, VerificationResult } from "@/lib/scenarios/verification";
 import type { Scenario } from "@/lib/scenarios/schema";
@@ -61,6 +62,17 @@ function databaseSources(bundle: AuthoredBundle, profile: ReturnType<typeof reso
 export async function validateSolution(bundle: AuthoredBundle, verify: SolutionVerifier): Promise<Diagnostic[]> {
   const { scenario } = bundle;
   if (!scenario) return [];
+
+  if (scenarioTypeOf(scenario) === "fullstack") {
+    return [
+      diag.suggestion(
+        "solution/fullstack-runner",
+        "scenario.md → steps",
+        "Fullstack checkpoints are validated by the fullstack scenario test runner instead of the single-engine authoring verifier.",
+        "Run `npm run scenario:test:fullstack -- <slug>` to validate backend, frontend, and integration test layers.",
+      ),
+    ];
+  }
 
   const out: Diagnostic[] = [];
   const profile = resolveExecutionProfile(scenario);

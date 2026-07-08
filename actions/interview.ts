@@ -12,7 +12,7 @@ import { loadScenario } from "@/server/scenarios/load";
 import { evaluateInputSchema, firstIssue, interviewConfigSchema } from "@/lib/validation/interview";
 import { routeForSetupDraft } from "@/lib/interview-routing";
 import { scenarioToCandidate } from "@/lib/scenarios/selection/adapters";
-import { roleMatchForScenario } from "@/lib/scenarios/selection/roles";
+import { interviewTrackMatchForScenario } from "@/lib/scenarios/selection/roles";
 import { isPublicScenario } from "@/lib/scenarios/visibility";
 import type {
   CodeSubmission,
@@ -86,7 +86,7 @@ export async function chooseTechnicalScenario(scenarioSlug: string): Promise<Cho
   }
 
   const candidate = scenarioToCandidate(loaded.scenario, loaded.slug);
-  if (!roleMatchForScenario(candidate, draft.role).allowed) {
+  if (!interviewTrackMatchForScenario(candidate, draft.role).allowed) {
     return { ok: false, error: "That scenario is not available for the selected role." };
   }
 

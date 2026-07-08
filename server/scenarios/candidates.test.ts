@@ -11,4 +11,14 @@ describe("public scenario candidate discovery", () => {
     const options = await listScenarioPickerOptions();
     expect(options.some((scenario) => scenario.slug === "notes-rest-api")).toBe(true);
   });
+
+  it("keeps internal fullstack and golden-health-check scenarios out of the public picker", async () => {
+    const candidates = await listScenarioCandidates();
+    const options = await listScenarioPickerOptions();
+
+    expect(candidates.some((scenario) => scenario.slug === "customer-feedback-dashboard")).toBe(false);
+    expect(options.some((scenario) => scenario.slug === "customer-feedback-dashboard")).toBe(false);
+    expect(candidates.some((scenario) => scenario.slug === "golden-health-check")).toBe(false);
+    expect(options.some((scenario) => scenario.slug === "golden-health-check")).toBe(false);
+  });
 });

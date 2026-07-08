@@ -1,11 +1,13 @@
 import "server-only";
 
 import { executionPlatform } from "@/server/scenarios/execution-platform";
+import { verifyScenarioStep } from "@/server/scenarios/fullstack-step-verification";
 import { testSource } from "@/server/scenarios/test-source";
 import { databaseSource } from "@/server/scenarios/database-source";
 import { loadScenario } from "@/server/scenarios/load";
 import { ensureDomEnv } from "@/server/scenarios/dom-env";
 import { profileFromHarness, resolveExecutionProfile, type ExecutionProfile } from "@/lib/scenarios/execution/profile";
+import { resolveVerificationMode } from "@/lib/scenarios/verification-mode";
 import type { AuthoredTestFile } from "@/lib/scenarios/engines/contracts";
 import type { ExecutionContext } from "@/lib/scenarios/execution/context";
 import type { VerificationResult, VerifyInput } from "@/lib/scenarios/verification";
@@ -29,8 +31,21 @@ let queue: Promise<unknown> = Promise.resolve();
 
 export function verifyStepOnServer(input: VerifyInput): Promise<VerificationResult> {
   const run = queue.then(async () => {
+    const loaded = await loadScenario(input.scenarioSlug, { includeAuthorOnly: false });
+    if (resolveVerificationMode(loaded.scenario, "step") === "scenario-step") {
+      const stepIndex = loaded.scenario.steps.findIndex((step) => step.id === input.step.id);
+      if (stepIndex === -1) {
+        throw new Error(`step not found: '${input.step.id}' in '${input.scenarioSlug}'`);
+      }
+      return verifyScenarioStep({
+        scenarioSlug: input.scenarioSlug,
+        stepIndex,
+        files: input.files,
+      });
+    }
+
     ensureDomEnv();
-    const context = await buildExecutionContext(input);
+    const context = await buildExecutionContext(input, loaded);
     return executionPlatform.verify(context);
   });
   // Keep the chain alive regardless of the individual run's outcome.
@@ -42,7 +57,7 @@ export function verifyStepOnServer(input: VerifyInput): Promise<VerificationResu
 }
 
 /** Assemble the ExecutionContext for a single server-side run. */
-async function buildExecutionContext(input: VerifyInput): Promise<ExecutionContext> {
+async function buildExecutionContext(input: VerifyInput, loaded?: Awaited<ReturnType<typeof loadScenario>>): Promise<ExecutionContext> {
   const profile = profileFromHarness(input.step.harness);
   const testFiles = await resolveTestFiles(input.scenarioSlug, input.step.id);
 
@@ -52,7 +67,7 @@ async function buildExecutionContext(input: VerifyInput): Promise<ExecutionConte
   // behavior is unchanged.
   let database: ExecutionContext["database"];
   if (profile.engine === "node") {
-    const full = await loadNodeProfile(input.scenarioSlug);
+    const full = loaded ? resolveExecutionProfile(loaded.scenario) : await loadNodeProfile(input.scenarioSlug);
     if (full) {
       profile.framework = full.framework;
       profile.database = full.database;

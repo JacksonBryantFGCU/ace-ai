@@ -1,4 +1,5 @@
 import type { Difficulty, ExperienceLevel, QuestionType } from "@/types/interview";
+import type { ScenarioType } from "@/lib/scenarios/schema";
 
 /**
  * Types for the scenario selection service.
@@ -18,6 +19,7 @@ export interface ScenarioCandidate {
   interviewTypes: QuestionType[];
   jobRoles: string[];
   category: string;
+  type: ScenarioType;
   difficulty: Difficulty;
   languages: string[];
   runtime?: string;
@@ -41,6 +43,7 @@ export interface SelectionCriteria {
   experience?: ExperienceLevel;
   language?: string;
   category?: string;
+  scenarioType?: ScenarioType;
   runtime?: string;
   framework?: string;
 }
@@ -48,6 +51,7 @@ export interface SelectionCriteria {
 /** The relaxable constraints, named for reporting + priority overrides. */
 export type RelaxableConstraint =
   | "category"
+  | "scenarioType"
   | "difficulty"
   | "jobRole"
   | "language"

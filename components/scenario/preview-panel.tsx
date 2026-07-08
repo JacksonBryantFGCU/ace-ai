@@ -2,7 +2,9 @@
 
 import { useMemo } from "react";
 import { PreviewEmpty } from "@/components/scenario/preview/preview-chrome";
+import { FullstackPreviewFrame } from "@/components/scenario/preview/fullstack-preview-frame";
 import { shell } from "@/components/scenario/shell/tokens";
+import { isFullstackRuntimeScenario } from "@/lib/scenarios/fullstack-runtime";
 import { previewRendererRegistry } from "@/lib/scenarios/preview/renderers/registry";
 import { createPreviewSnapshot } from "@/lib/scenarios/preview/snapshot";
 import { renderPreview } from "@/lib/scenarios/preview/runtime";
@@ -35,6 +37,14 @@ export function PreviewPanel({
     () => createPreviewSnapshot({ scenario: loaded.scenario, files, activeFile: loaded.entry }),
     [loaded.scenario, loaded.entry, files],
   );
+  const fullstackFiles = useMemo(
+    () => files.map((file) => ({ path: file.path, content: file.content, role: file.role })),
+    [files],
+  );
+  const fullstackPreviewKey = useMemo(
+    () => `${loaded.slug}:${fullstackFiles.map((file) => `${file.path}:${file.content}`).join("|")}`,
+    [loaded.slug, fullstackFiles],
+  );
   const output = renderPreview(loaded.preview, snapshot, previewRendererRegistry);
 
   return (
@@ -42,7 +52,13 @@ export function PreviewPanel({
       className="flex w-[360px] max-w-[38vw] flex-none flex-col"
       style={{ background: shell.panelBg, borderLeft: `1px solid ${shell.border}` }}
     >
-      {output.status === "rendered" ? output.node : <PreviewEmpty />}
+      {isFullstackRuntimeScenario(loaded) ? (
+        <FullstackPreviewFrame key={fullstackPreviewKey} scenarioSlug={loaded.slug} files={fullstackFiles} />
+      ) : output.status === "rendered" ? (
+        output.node
+      ) : (
+        <PreviewEmpty />
+      )}
     </div>
   );
 }

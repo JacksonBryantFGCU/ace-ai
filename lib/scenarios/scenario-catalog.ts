@@ -1,4 +1,10 @@
-import { roleMatchForScenario, scenarioRoleFamily, type ScenarioRoleFamily } from "@/lib/scenarios/selection/roles";
+import {
+  interviewTrackMatchForScenario,
+  roleMatchForScenario,
+  scenarioRoleFamily,
+  type ScenarioRoleFamily,
+} from "@/lib/scenarios/selection/roles";
+import type { ScenarioType } from "@/lib/scenarios/schema";
 
 export const ALL_FILTER = "__all__";
 export const DIFFICULTY_ORDER = ["easy", "medium", "hard"] as const;
@@ -9,6 +15,7 @@ export interface CatalogScenario {
   title: string;
   summary: string;
   category: string;
+  type?: ScenarioType;
   difficulty: string;
   jobRoles: readonly string[];
   skills?: readonly string[];
@@ -21,6 +28,7 @@ export interface CatalogScenario {
 export interface ScenarioCatalogFilters {
   query?: string;
   role?: string;
+  scenarioType?: string;
   difficulty?: string;
   category?: string;
   runtimeFramework?: string;
@@ -53,11 +61,14 @@ export function scenarioMatchesCatalogFilters<T extends CatalogScenario>(
   scenario: T,
   filters: ScenarioCatalogFilters,
 ): boolean {
-  if (filters.allowedRole && !roleMatchForScenario(scenario, filters.allowedRole).allowed) return false;
+  if (filters.allowedRole && !interviewTrackMatchForScenario(scenario, filters.allowedRole).allowed) return false;
   if (filters.role && filters.role !== ALL_FILTER && !roleMatchForScenario(scenario, filters.role).allowed) {
     return false;
   }
   if (filters.difficulty && filters.difficulty !== ALL_FILTER && scenario.difficulty !== filters.difficulty) {
+    return false;
+  }
+  if (filters.scenarioType && filters.scenarioType !== ALL_FILTER && scenario.type !== filters.scenarioType) {
     return false;
   }
   if (filters.category && filters.category !== ALL_FILTER && scenario.category !== filters.category) return false;
@@ -75,6 +86,7 @@ export function scenarioMatchesCatalogFilters<T extends CatalogScenario>(
     scenario.title,
     scenario.summary,
     scenario.category,
+    scenario.type,
     scenario.difficulty,
     scenario.runtime,
     scenario.framework,

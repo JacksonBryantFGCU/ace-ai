@@ -477,8 +477,8 @@
   color: var(--preview-muted);
 }
 
-/* Dark, low-contrast scrollbars for backend API preview response panes. Scoped
-   to the response boxes so app/editor scrollbars keep their existing platform
+/* Dark, low-contrast scrollbars for backend API preview request/response panes.
+   Scoped to those dark boxes so app/editor scrollbars keep their existing platform
    behavior. */
 .api-preview-scrollbar {
   scrollbar-width: thin;

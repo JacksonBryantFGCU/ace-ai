@@ -1,6 +1,7 @@
 import { validateFrontmatter } from "@/lib/scenarios/authoring/frontmatter";
 import { validateExecution, validateDatabase } from "@/lib/scenarios/authoring/execution";
 import { validateWorkspace } from "@/lib/scenarios/authoring/workspace";
+import { validateFullstackContract } from "@/lib/scenarios/authoring/fullstack";
 import { validateSteps } from "@/lib/scenarios/authoring/steps";
 import { validateRubric } from "@/lib/scenarios/authoring/rubric";
 import { validatePreview } from "@/lib/scenarios/authoring/preview";
@@ -23,6 +24,7 @@ const STATIC_VALIDATORS = [
   validateFrontmatter,
   validateExecution,
   validateWorkspace,
+  validateFullstackContract,
   validateSteps,
   validateRubric,
   validatePreview,

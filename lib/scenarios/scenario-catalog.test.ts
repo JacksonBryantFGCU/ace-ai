@@ -12,6 +12,7 @@ function scenario(partial: Partial<CatalogScenario> & { slug: string; title: str
     title: partial.title,
     summary: partial.summary ?? "A scenario summary",
     category: partial.category ?? "frontend-react",
+    type: partial.type,
     difficulty: partial.difficulty ?? "medium",
     jobRoles: partial.jobRoles ?? ["frontend"],
     skills: partial.skills ?? ["react"],
@@ -28,6 +29,7 @@ const catalog = [
     title: "Todo List",
     summary: "Manage client state with React",
     category: "frontend-react",
+    type: "frontend",
     difficulty: "easy",
     jobRoles: ["frontend"],
     tags: ["framework:react"],
@@ -38,6 +40,7 @@ const catalog = [
     title: "Notes REST API",
     summary: "Build an Express API backed by SQLite",
     category: "backend-node",
+    type: "backend",
     difficulty: "easy",
     jobRoles: ["backend"],
     skills: ["rest-api"],
@@ -50,6 +53,7 @@ const catalog = [
     title: "Full-Stack Dashboard",
     summary: "Wire a React client to an API",
     category: "fullstack-node-react",
+    type: "fullstack",
     difficulty: "hard",
     jobRoles: ["fullstack"],
     runtime: "node",
@@ -60,6 +64,7 @@ const catalog = [
     title: "Kanban Board",
     summary: "Drag cards between columns",
     category: "frontend-react",
+    type: "frontend",
     difficulty: "hard",
     jobRoles: ["frontend"],
     tags: ["drag-drop"],
@@ -87,6 +92,9 @@ describe("scenario catalog filtering", () => {
     expect(filterCatalogScenarios(catalog, { runtimeFramework: "express" }).map((s) => s.slug)).toEqual([
       "notes-rest-api",
     ]);
+    expect(filterCatalogScenarios(catalog, { scenarioType: "fullstack" }).map((s) => s.slug)).toEqual([
+      "fullstack-dashboard",
+    ]);
   });
 
   it("allowedRole is a hard boundary for setup pickers", () => {
@@ -94,10 +102,7 @@ describe("scenario catalog filtering", () => {
       "notes-rest-api",
     ]);
     expect(filterCatalogScenarios(catalog, { allowedRole: "fullstack" }).map((s) => s.slug)).toEqual([
-      "todo-list",
-      "notes-rest-api",
       "fullstack-dashboard",
-      "kanban-board",
     ]);
   });
 

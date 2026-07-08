@@ -8,6 +8,7 @@ import { useEvaluation } from "@/hooks/use-evaluation";
 import { fetchCheckpoint } from "@/actions/scenario";
 import { buildInterviewResult } from "@/lib/scenarios/interview-result";
 import { deriveSignals, toSignalScenario } from "@/lib/scenarios/runtime-signal";
+import { canAdvanceAfterVerification, resolveVerificationMode } from "@/lib/scenarios/verification-mode";
 import type { RuntimeSignal } from "@/lib/scenarios/runtime-signal";
 import type { ConversationEntry } from "@/lib/scenarios/conversation";
 import type { InterviewContext, InterviewController } from "@/lib/scenarios/interview-controller";
@@ -45,6 +46,7 @@ export function useInterviewController(loaded: LoadedScenario) {
   const [conversation, setConversation] = useState<ConversationEntry[]>([]);
 
   const signalScenario = useMemo(() => toSignalScenario(loaded), [loaded]);
+  const stepVerificationMode = useMemo(() => resolveVerificationMode(scenario, "step"), [scenario]);
 
   // ── Refs so the STABLE controller closures always read the latest values ─────
   const stateRef = useRef(machine.state);
@@ -193,9 +195,31 @@ export function useInterviewController(loaded: LoadedScenario) {
         const step = scenario.steps[stateRef.current.stepIndex];
         if (step) actions.declineCheckpoint(step.id);
       },
-      next: () => actions.next(),
+      next: () => {
+        const step = stateRef.current.steps[stateRef.current.stepIndex];
+        if (
+          stepVerificationMode === "scenario-step" &&
+          step &&
+          !canAdvanceAfterVerification(step.status)
+        ) {
+          return;
+        }
+        actions.next();
+      },
       prev: () => actions.prev(),
-      goTo: (index) => actions.goTo(index),
+      goTo: (index) => {
+        const currentIndex = stateRef.current.stepIndex;
+        const step = stateRef.current.steps[currentIndex];
+        if (
+          index > currentIndex &&
+          stepVerificationMode === "scenario-step" &&
+          step &&
+          !canAdvanceAfterVerification(step.status)
+        ) {
+          return;
+        }
+        actions.goTo(index);
+      },
       complete: () => actions.complete(),
       subscribe: (listener) => {
         subscribersRef.current.add(listener);
@@ -203,7 +227,7 @@ export function useInterviewController(loaded: LoadedScenario) {
       },
       getContext: buildContext,
     }),
-    [actions, verify, emit, recordVerification, buildContext, loaded.slug, scenario.steps],
+    [actions, verify, emit, recordVerification, buildContext, loaded.slug, scenario.steps, stepVerificationMode],
   );
 
   /** Append to the conversation record (wired to the voice client's onConversation).

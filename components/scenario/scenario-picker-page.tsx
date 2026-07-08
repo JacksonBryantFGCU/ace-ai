@@ -38,6 +38,7 @@ export function ScenarioPickerPage({
 }) {
   const [query, setQuery] = useState("");
   const [roleFilter, setRoleFilter] = useState(ALL_FILTER);
+  const [scenarioType, setScenarioType] = useState(ALL_FILTER);
   const [difficulty, setDifficulty] = useState(ALL_FILTER);
   const [category, setCategory] = useState(ALL_FILTER);
   const [runtimeFramework, setRuntimeFramework] = useState(ALL_FILTER);
@@ -50,6 +51,7 @@ export function ScenarioPickerPage({
     [scenarios, config.role],
   );
   const roles = useMemo(() => [ALL_FILTER, ...distinctCatalogValues(roleBound.flatMap((s) => s.jobRoles))], [roleBound]);
+  const scenarioTypes = useMemo(() => [ALL_FILTER, ...distinctCatalogValues(roleBound.map((s) => s.type))], [roleBound]);
   const difficulties = useMemo(
     () => [
       ALL_FILTER,
@@ -70,18 +72,14 @@ export function ScenarioPickerPage({
         filterCatalogScenarios(roleBound, {
           query,
           role: roleFilter,
+          scenarioType,
           difficulty,
           category,
           runtimeFramework,
         }),
       ),
-    [roleBound, query, roleFilter, difficulty, category, runtimeFramework],
+    [roleBound, query, roleFilter, scenarioType, difficulty, category, runtimeFramework],
   );
-  const recommended = useMemo(() => {
-    const exact = recommendedSlug ? roleBound.find((scenario) => scenario.slug === recommendedSlug) : null;
-    const sameDifficulty = roleBound.filter((scenario) => scenario.difficulty === config.difficulty);
-    return sortCatalogScenarios([...(exact ? [exact] : []), ...sameDifficulty.filter((s) => s.slug !== exact?.slug)]).slice(0, 3);
-  }, [roleBound, recommendedSlug, config.difficulty]);
   const selected = selectedSlug ? roleBound.find((scenario) => scenario.slug === selectedSlug) ?? null : null;
 
   function startInterview() {
@@ -140,6 +138,7 @@ export function ScenarioPickerPage({
                 </span>
               </label>
               <FilterSelect label="Role" value={roleFilter} onChange={setRoleFilter} options={roles} />
+              <FilterSelect label="Scenario type" value={scenarioType} onChange={setScenarioType} options={scenarioTypes} />
               <FilterSelect label="Difficulty" value={difficulty} onChange={setDifficulty} options={difficulties} />
               <FilterSelect label="Category" value={category} onChange={setCategory} options={categories} />
               <FilterSelect label="Stack/runtime" value={runtimeFramework} onChange={setRuntimeFramework} options={stacks} />
@@ -150,31 +149,16 @@ export function ScenarioPickerPage({
             <div className="shrink-0 border-b border-slate-200/70 px-3 py-2.5">
               <div className="flex items-center justify-between gap-3">
                 <div>
-                  <h2 className="text-sm font-semibold text-slate-900">Recommended scenarios</h2>
+                  <h2 className="text-sm font-semibold text-slate-900">Scenarios</h2>
                   <p className="text-xs text-slate-500">{roleBound.length} role-matched scenarios available</p>
                 </div>
                 <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-600">
                   {filtered.length} shown
                 </span>
               </div>
-              {recommended.length > 0 ? (
-                <div className="mt-2 grid gap-2 md:grid-cols-3">
-                  {recommended.map((scenario) => (
-                    <ScenarioCard
-                      key={scenario.slug}
-                      scenario={scenario}
-                      compact
-                      selected={scenario.slug === selectedSlug}
-                      recommended={scenario.slug === recommendedSlug}
-                      onSelect={() => setSelectedSlug(scenario.slug)}
-                    />
-                  ))}
-                </div>
-              ) : null}
             </div>
 
             <div data-testid="scenario-picker-scroll" className="min-h-0 flex-1 overflow-y-auto p-3">
-              <h2 className="mb-2 text-sm font-semibold text-slate-900">All scenarios</h2>
               {roleBound.length === 0 ? (
                 <EmptyMessage message={noScenarioMessage(config.role)} />
               ) : filtered.length === 0 ? (
@@ -186,7 +170,6 @@ export function ScenarioPickerPage({
                       key={scenario.slug}
                       scenario={scenario}
                       selected={scenario.slug === selectedSlug}
-                      recommended={scenario.slug === recommendedSlug}
                       onSelect={() => setSelectedSlug(scenario.slug)}
                     />
                   ))}
@@ -207,17 +190,13 @@ export function ScenarioPickerPage({
 function ScenarioCard({
   scenario,
   selected,
-  recommended,
-  compact = false,
   onSelect,
 }: {
   scenario: ScenarioPickerOption;
   selected: boolean;
-  recommended: boolean;
-  compact?: boolean;
   onSelect: () => void;
 }) {
-  const stack = runtimeFrameworkValue(scenario) || scenario.category;
+  const stack = categoryLabel(scenario);
   return (
     <button
       type="button"
@@ -234,11 +213,8 @@ function ScenarioCard({
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-1.5">
             <span className="truncate text-sm font-semibold text-slate-950">{scenario.title}</span>
-            {recommended ? <span className="rounded-full bg-indigo-100 px-1.5 py-0.5 text-[10px] font-semibold text-indigo-700">Recommended</span> : null}
           </div>
-          <p className={cn("mt-1 text-xs leading-relaxed text-slate-600", compact ? "line-clamp-1" : "line-clamp-2")}>
-            {scenario.summary}
-          </p>
+          <p className="mt-1 line-clamp-2 text-xs leading-relaxed text-slate-600">{scenario.summary}</p>
         </div>
         <span
           className={cn(
@@ -252,7 +228,7 @@ function ScenarioCard({
       <div className="mt-2 flex flex-wrap items-center gap-1.5">
         <Chip className={DIFFICULTY_STYLE[scenario.difficulty]}>{scenario.difficulty}</Chip>
         <Chip>{titleCase(scenarioRoleFamily(scenario))}</Chip>
-        <Chip>{titleCase(stack.replace(/-/g, " "))}</Chip>
+        <Chip>{stack}</Chip>
         <span className="ml-auto inline-flex items-center gap-1 text-xs text-slate-500">
           <Clock className="size-3.5" /> {scenario.estimatedMinutes}m
         </span>
@@ -284,7 +260,7 @@ function ScenarioDetails({
     );
   }
 
-  const stack = runtimeFrameworkValue(scenario) || scenario.category;
+  const category = categoryLabel(scenario);
   return (
     <>
       <div className="min-h-0 flex-1 overflow-y-auto pr-1">
@@ -294,8 +270,7 @@ function ScenarioDetails({
 
         <div className="mt-4 flex flex-wrap gap-1.5">
           <Chip className={DIFFICULTY_STYLE[scenario.difficulty]}>{scenario.difficulty}</Chip>
-          <Chip>{scenario.category}</Chip>
-          <Chip>{titleCase(stack.replace(/-/g, " "))}</Chip>
+          <Chip>{category}</Chip>
           <Chip>{scenario.estimatedMinutes} min</Chip>
         </div>
 
@@ -336,6 +311,32 @@ function ScenarioDetails({
       </div>
     </>
   );
+}
+
+function categoryLabel(scenario: ScenarioPickerOption): string {
+  const segments = [titleCase(scenario.type.replace(/-/g, " "))];
+  const categoryTokens = scenario.category
+    .split("-")
+    .map((token) => token.trim().toLowerCase())
+    .filter(Boolean);
+  const tagValues = new Map(
+    scenario.tags
+      .map((tag) => tag.split(":", 2))
+      .filter((parts): parts is [string, string] => parts.length === 2),
+  );
+
+  if (categoryTokens.includes("react") || tagValues.get("framework") === "react") segments.push("React");
+  if (categoryTokens.includes("node") || scenario.runtime === "node") segments.push("Node");
+
+  const framework = scenario.framework?.trim().toLowerCase();
+  if (framework && !segments.some((segment) => segment.toLowerCase() === framework)) {
+    segments.push(titleCase(framework));
+  }
+
+  const database = tagValues.get("database");
+  if (database) segments.push(database.toUpperCase() === "SQLITE" ? "SQLite" : titleCase(database));
+
+  return [...new Set(segments)].join(" / ");
 }
 
 function FilterSelect({

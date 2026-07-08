@@ -30,6 +30,7 @@ import { noScenarioMessage, roleMatchForScenario } from "@/lib/scenarios/selecti
 /** LEAST important first (relaxed first). `jobRole` is last = most protected. */
 export const DEFAULT_RELAX_PRIORITY: RelaxableConstraint[] = [
   "category",
+  "scenarioType",
   "language",
   "framework",
   "runtime",
@@ -50,6 +51,8 @@ function satisfies(
   switch (constraint) {
     case "category":
       return !criteria.category || norm(candidate.category) === norm(criteria.category);
+    case "scenarioType":
+      return !criteria.scenarioType || candidate.type === criteria.scenarioType;
     case "difficulty":
       return !criteria.difficulty || candidate.difficulty === criteria.difficulty;
     case "jobRole":

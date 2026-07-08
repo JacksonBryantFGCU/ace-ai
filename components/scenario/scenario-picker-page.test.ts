@@ -21,6 +21,7 @@ function option(partial: Partial<ScenarioPickerOption> & { slug: string; title: 
   return {
     slug: partial.slug,
     category: partial.category ?? "frontend-react",
+    type: partial.type ?? "frontend",
     title: partial.title,
     summary: partial.summary ?? "A scenario summary",
     difficulty: partial.difficulty ?? "medium",
@@ -50,6 +51,7 @@ const scenarios = [
     title: "Notes REST API",
     summary: "Build an Express API with SQLite",
     category: "backend-node",
+    type: "backend",
     difficulty: "easy",
     jobRoles: ["backend"],
     skills: ["rest-api"],
@@ -64,6 +66,18 @@ const scenarios = [
     difficulty: "hard",
     jobRoles: ["frontend"],
     framework: "react",
+  }),
+  option({
+    slug: "customer-ops-dashboard",
+    title: "Customer Ops Dashboard",
+    summary: "Wire a React app to a Node API backed by SQLite",
+    category: "fullstack-react-node",
+    type: "fullstack",
+    difficulty: "medium",
+    jobRoles: ["fullstack"],
+    runtime: "node",
+    tags: ["framework:react", "database:sqlite"],
+    framework: "express",
   }),
 ];
 
@@ -103,12 +117,13 @@ describe("ScenarioPickerPage", () => {
     expect(screen.queryByText("Notes REST API")).not.toBeInTheDocument();
   });
 
-  it("full-stack role shows frontend and backend scenarios", () => {
+  it("full-stack role only shows fullstack scenarios in the live interview picker", () => {
     renderPicker({ role: "fullstack" });
 
-    expect(screen.getByText("Todo List")).toBeInTheDocument();
-    expect(screen.getByText("Kanban Board")).toBeInTheDocument();
-    expect(screen.getByText("Notes REST API")).toBeInTheDocument();
+    expect(screen.getByText("Customer Ops Dashboard")).toBeInTheDocument();
+    expect(screen.queryByText("Todo List")).not.toBeInTheDocument();
+    expect(screen.queryByText("Kanban Board")).not.toBeInTheDocument();
+    expect(screen.queryByText("Notes REST API")).not.toBeInTheDocument();
   });
 
   it("search filters scenarios by text and tags", () => {
@@ -116,26 +131,44 @@ describe("ScenarioPickerPage", () => {
 
     fireEvent.change(screen.getByLabelText("Search scenarios"), { target: { value: "sqlite" } });
 
-    expect(screen.getByText("Notes REST API")).toBeInTheDocument();
+    expect(screen.getByText("Customer Ops Dashboard")).toBeInTheDocument();
     expect(screen.queryByText("Todo List")).not.toBeInTheDocument();
   });
 
   it("difficulty, category, and stack filters work", () => {
     renderPicker({ role: "fullstack" });
 
-    fireEvent.change(screen.getByLabelText("Difficulty"), { target: { value: "hard" } });
-    expect(screen.getByText("Kanban Board")).toBeInTheDocument();
+    fireEvent.change(screen.getByLabelText("Difficulty"), { target: { value: "medium" } });
+    expect(screen.getByText("Customer Ops Dashboard")).toBeInTheDocument();
     expect(screen.queryByText("Todo List")).not.toBeInTheDocument();
 
     fireEvent.change(screen.getByLabelText("Difficulty"), { target: { value: "__all__" } });
-    fireEvent.change(screen.getByLabelText("Category"), { target: { value: "backend-node" } });
-    expect(screen.getByText("Notes REST API")).toBeInTheDocument();
+    fireEvent.change(screen.getByLabelText("Category"), { target: { value: "fullstack-react-node" } });
+    expect(screen.getByText("Customer Ops Dashboard")).toBeInTheDocument();
     expect(screen.queryByText("Kanban Board")).not.toBeInTheDocument();
 
     fireEvent.change(screen.getByLabelText("Category"), { target: { value: "__all__" } });
-    fireEvent.change(screen.getByLabelText("Stack/runtime"), { target: { value: "react" } });
-    expect(screen.getByText("Todo List")).toBeInTheDocument();
+    fireEvent.change(screen.getByLabelText("Stack/runtime"), { target: { value: "express" } });
+    expect(screen.getByText("Customer Ops Dashboard")).toBeInTheDocument();
     expect(screen.queryByText("Notes REST API")).not.toBeInTheDocument();
+  });
+
+  it("scenario type filter works", () => {
+    renderPicker({ role: "fullstack" });
+
+    fireEvent.change(screen.getByLabelText("Scenario type"), { target: { value: "fullstack" } });
+
+    expect(screen.getByText("Customer Ops Dashboard")).toBeInTheDocument();
+    expect(screen.queryByText("Todo List")).not.toBeInTheDocument();
+    expect(screen.queryByText("Kanban Board")).not.toBeInTheDocument();
+  });
+
+  it("renders a readable fullstack category label", () => {
+    renderPicker({ role: "fullstack" });
+
+    fireEvent.click(screen.getByRole("button", { name: /Customer Ops Dashboard/ }));
+
+    expect(screen.getAllByText("Fullstack / React / Node / Express / SQLite").length).toBeGreaterThan(0);
   });
 
   it("selected scenario enables Start Interview and submits the slug", async () => {

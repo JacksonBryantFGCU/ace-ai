@@ -100,6 +100,7 @@ describe("ApiPreviewExplorer", () => {
 
     const body = await screen.findByTestId("api-preview-response-body");
     const headers = screen.getByTestId("api-preview-response-headers");
+    expect(screen.getByLabelText("JSON body")).toHaveClass("api-preview-scrollbar");
     expect(body).toHaveClass("api-preview-scrollbar", "overflow-x-hidden", "whitespace-pre-wrap");
     expect(body.className).toContain("[overflow-wrap:anywhere]");
     expect(headers).toHaveClass("api-preview-scrollbar", "overflow-x-hidden");

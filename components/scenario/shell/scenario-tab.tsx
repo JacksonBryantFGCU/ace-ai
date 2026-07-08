@@ -24,9 +24,14 @@ import type { VerificationResult } from "@/lib/scenarios/verification";
 /** Verification wiring passed down from the shell (which owns coordination). */
 export interface VerificationPanelProps {
   supported: boolean;
+  mode: "single-file" | "scenario-step";
   running: boolean;
   result: VerificationResult | null;
   onRun: () => void;
+  runLabel: string;
+  runningLabel: string;
+  nextLocked?: boolean;
+  nextLockedReason?: string;
 }
 
 /** Checkpoint wiring passed down from the shell. */
@@ -125,14 +130,14 @@ export function ScenarioTab({
               </div>
             </div>
 
-            {/* Discussion step — talk it through; captured against the rubric. */}
+            {/* Rubric-only steps are reviewed outside the single-file verifier. */}
             {!verification.supported ? (
               <div>
                 <span className={`${SECTION_LABEL} mb-[9px] block`} style={{ color: shell.textFaint }}>
                   Your response
                 </span>
                 <p className="mb-2 text-xs" style={{ color: shell.textFainter }}>
-                  Discussion step — talk through your approach; it&apos;s reviewed against the rubric.
+                  This step is reviewed against the rubric.
                 </p>
                 {current ? (
                   <ResponseEditor
@@ -214,6 +219,15 @@ export function ScenarioTab({
                 <span className={`${SECTION_LABEL} mb-[9px] block`} style={{ color: shell.textFaint }}>
                   Result
                 </span>
+                {verification.mode === "scenario-step" ? (
+                  <p className="mb-2 text-xs" style={{ color: shell.textFainter }}>
+                    {verification.result.status === "passed"
+                      ? "Step checks passed."
+                      : verification.result.status === "failed" || verification.result.status === "errored"
+                        ? "Step checks failed."
+                        : verification.result.message}
+                  </p>
+                ) : null}
                 <VerificationResultCard result={verification.result} />
               </div>
             ) : null}
@@ -239,8 +253,14 @@ export function ScenarioTab({
             ) : (
               <Play className="size-[15px] fill-current" />
             )}
-            {verification.running ? "Running…" : "Run verification"}
+            {verification.running ? verification.runningLabel : verification.runLabel}
           </button>
+        ) : null}
+
+        {verification.nextLocked ? (
+          <p className="text-xs" style={{ color: shell.textFainter }}>
+            {verification.nextLockedReason}
+          </p>
         ) : null}
 
         <div className="flex gap-2.5">
@@ -256,7 +276,7 @@ export function ScenarioTab({
           <button
             type="button"
             onClick={controller.next}
-            disabled={complete}
+            disabled={complete || verification.nextLocked}
             className="flex flex-1 items-center justify-center gap-1.5 rounded-[9px] p-[9px] text-[13px] font-semibold text-white transition-colors hover:brightness-110 focus-visible:ring-2 focus-visible:ring-blue-400/60 focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50"
             style={{ background: shell.nextBg }}
           >

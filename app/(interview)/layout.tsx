@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import type { ReactNode } from "react";
 import { requireUser } from "@/server/auth";
 import { userDisplayName } from "@/lib/user-display";
-import { DashboardNavbar } from "@/components/dashboard-navbar";
+import { InterviewShell } from "./interview-shell";
 
 // Private surface — keep out of search indexes.
 export const metadata: Metadata = {
@@ -10,18 +10,16 @@ export const metadata: Metadata = {
 };
 
 /**
- * Chrome for the live interview experience. Dark slate surface with the dark
- * navbar variant (legacy appearance — see screenshot 08). `requireUser()` is the
- * server-side gate (defense-in-depth behind the proxy) and supplies the navbar
- * name; the interactive Vapi island owns the rest of the screen.
+ * Chrome for the interview experience. The live interview runtime keeps the dark
+ * surface, while setup-adjacent picker pages use the light app navbar.
+ * `requireUser()` is the server-side gate behind the proxy.
  */
 export default async function InterviewLayout({ children }: { children: ReactNode }) {
   const user = await requireUser();
 
   return (
-    <div className="dark surface-dark text-foreground flex min-h-dvh flex-col">
-      <DashboardNavbar name={userDisplayName(user)} variant="dark" />
-      <main className="flex flex-1 flex-col">{children}</main>
-    </div>
+    <InterviewShell name={userDisplayName(user)} email={user.email ?? null}>
+      {children}
+    </InterviewShell>
   );
 }

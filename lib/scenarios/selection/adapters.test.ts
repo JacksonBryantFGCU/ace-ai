@@ -22,6 +22,7 @@ describe("scenarioToCandidate", () => {
       interviewTypes: ["technical"],
       jobRoles: ["frontend", "fullstack"],
       category: "frontend-react",
+      type: "frontend",
       difficulty: "medium",
       languages: ["typescript"],
       experienceMin: "entry",
@@ -46,6 +47,24 @@ describe("criteriaFromConfig", () => {
       jobRole: "frontend",
       difficulty: "medium",
       experience: "junior",
+    });
+  });
+
+  it("constrains fullstack setup to fullstack scenario selection", () => {
+    const config: VapiInterviewConfig = {
+      role: "fullstack",
+      difficulty: "medium",
+      experience: "junior",
+      strictness: "balanced",
+      questionType: "technical",
+      interviewer: "cassidy",
+    };
+    expect(criteriaFromConfig(config)).toEqual({
+      interviewType: "technical",
+      jobRole: "fullstack",
+      difficulty: "medium",
+      experience: "junior",
+      scenarioType: "fullstack",
     });
   });
 });

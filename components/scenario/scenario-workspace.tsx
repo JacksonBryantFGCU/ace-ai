@@ -25,6 +25,7 @@ import { EvaluationSkeleton } from "@/components/scenario/ui/evaluation-skeleton
 import { Timer } from "@/components/ui/timer";
 import { shell } from "@/components/scenario/shell/tokens";
 import { getInterviewer } from "@/lib/constants";
+import { canAdvanceAfterVerification, resolveVerificationMode } from "@/lib/scenarios/verification-mode";
 import type { LoadedScenario } from "@/lib/scenarios/types";
 
 const PANEL_TITLE: Record<PanelTab, string> = {
@@ -75,6 +76,13 @@ export function ScenarioWorkspace({
 
   const stepIndex = machine.state.stepIndex;
   const authoredStep = scenario.steps[stepIndex];
+  const verificationMode = authoredStep ? resolveVerificationMode(scenario, "step") : "single-file";
+  const verificationSupported =
+    verificationMode === "scenario-step" || (authoredStep?.verify.harness ?? "none") !== "none";
+  const nextLocked =
+    verificationMode === "scenario-step" &&
+    machine.current !== null &&
+    !canAdvanceAfterVerification(machine.current.status);
   const interviewerName = getInterviewer(undefined).name;
 
   const [activeTab, setActiveTab] = useState<PanelTab>("scenario");
@@ -204,10 +212,16 @@ export function ScenarioWorkspace({
                   machine={machine}
                   controller={controller}
                   verification={{
-                    supported: (authoredStep?.verify.harness ?? "none") !== "none",
+                    supported: verificationSupported,
+                    mode: verificationMode === "scenario-step" ? "scenario-step" : "single-file",
                     running: verification.running,
                     result: verification.result,
                     onRun,
+                    runLabel: verificationMode === "scenario-step" ? "Run step checks" : "Run verification",
+                    runningLabel:
+                      verificationMode === "scenario-step" ? "Running fullstack checks..." : "Running…",
+                    nextLocked,
+                    nextLockedReason: nextLocked ? "Verify this step before moving to the next one." : undefined,
                   }}
                   checkpoint={{
                     available: (authoredStep?.checkpoint?.files.length ?? 0) > 0,

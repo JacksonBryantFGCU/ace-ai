@@ -135,7 +135,7 @@ export function ApiPreviewExplorer({
             onChange={(event) => setBodyText(event.target.value)}
             spellCheck={false}
             rows={7}
-            className="min-h-28 resize-y rounded-md border border-white/10 bg-black/30 p-2 font-mono text-xs leading-relaxed text-gray-100 outline-none focus:ring-2 focus:ring-blue-400/60"
+            className="api-preview-scrollbar min-h-28 resize-y rounded-md border border-white/10 bg-black/30 p-2 font-mono text-xs leading-relaxed text-gray-100 outline-none focus:ring-2 focus:ring-blue-400/60"
             placeholder={method === "GET" || method === "DELETE" ? "No body for this example" : '{\n  "title": "..." \n}'}
           />
         </label>

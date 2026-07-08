@@ -1,4 +1,4 @@
-import type { FileRole, Scenario } from "@/lib/scenarios/schema";
+import type { FileRole, Scenario, ScenarioType } from "@/lib/scenarios/schema";
 import type { ServedPreviewBundle } from "@/lib/scenarios/preview/types";
 
 /**
@@ -33,6 +33,7 @@ export interface LoadedScenario {
 export interface ScenarioSummary {
   slug: string;
   category: string;
+  type: ScenarioType;
   title: string;
   summary: string;
   difficulty: string;
@@ -47,6 +48,7 @@ export interface ScenarioSummary {
 export interface ScenarioOption {
   slug: string;
   category: string;
+  type: ScenarioType;
   title: string;
   summary: string;
   difficulty: string;

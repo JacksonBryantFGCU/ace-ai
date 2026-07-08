@@ -1,6 +1,7 @@
 import type { Scenario } from "@/lib/scenarios/schema";
 import type { QuestionType, VapiInterviewConfig } from "@/types/interview";
 import type { ScenarioCandidate, SelectionCriteria } from "@/lib/scenarios/selection/types";
+import { scenarioTypeOf } from "@/lib/scenarios/scenario-type";
 
 /**
  * Adapters between the app's domain types and the pure selector. Kept apart from
@@ -27,6 +28,7 @@ export function scenarioToCandidate(scenario: Scenario, slug: string): ScenarioC
     interviewTypes: deriveInterviewTypes(scenario),
     jobRoles: [...scenario.jobRoles],
     category: scenario.category,
+    type: scenarioTypeOf(scenario),
     difficulty: scenario.difficulty,
     languages: [...scenario.stack.languages],
     runtime: scenario.runtime,
@@ -50,5 +52,6 @@ export function criteriaFromConfig(config: VapiInterviewConfig): SelectionCriter
     jobRole: config.role,
     difficulty: config.difficulty,
     experience: config.experience,
+    scenarioType: config.role === "fullstack" ? "fullstack" : undefined,
   };
 }
