@@ -9,9 +9,11 @@ import {
   type FullstackRuntimeHandle,
   type FullstackRuntimeLog,
   type FullstackRuntimeProcess,
+  type FullstackRuntimeTargets,
   type FullstackWorkspaceDirs,
 } from "@/lib/scenarios/fullstack-runtime";
 import type { LoadedScenario, ServedWorkspaceFile, SessionFile } from "@/lib/scenarios/types";
+import { startPerfSpan, timePerf } from "@/server/scenarios/perf";
 
 const RUNTIME_ROOT = join(process.cwd(), ".scenario-runtime");
 const DEFAULT_BACKEND_PORT = 4310;
@@ -50,21 +52,23 @@ function sleep(ms: number): Promise<void> {
 }
 
 async function prepareWorkspace(files: readonly FullstackRuntimeFile[]): Promise<FullstackWorkspaceDirs> {
-  const root = join(RUNTIME_ROOT, `${Date.now()}-${Math.random().toString(36).slice(2)}`);
-  await mkdir(root, { recursive: true });
+  return timePerf("fullstack.prepareWorkspace", async () => {
+    const root = join(RUNTIME_ROOT, `${Date.now()}-${Math.random().toString(36).slice(2)}`);
+    await mkdir(root, { recursive: true });
 
-  for (const file of files) {
-    const target = assertSafeWorkspacePath(root, file.path);
-    await mkdir(dirname(target), { recursive: true });
-    await writeFile(target, file.content, "utf8");
-  }
+    for (const file of files) {
+      const target = assertSafeWorkspacePath(root, file.path);
+      await mkdir(dirname(target), { recursive: true });
+      await writeFile(target, file.content, "utf8");
+    }
 
-  const backend = join(root, "backend");
-  const frontend = join(root, "frontend");
-  await mkdir(backend, { recursive: true });
-  await mkdir(frontend, { recursive: true });
+    const backend = join(root, "backend");
+    const frontend = join(root, "frontend");
+    await mkdir(backend, { recursive: true });
+    await mkdir(frontend, { recursive: true });
 
-  return { root, backend, frontend };
+    return { root, backend, frontend };
+  }, { fileCount: files.length });
 }
 
 class ChildProcessRuntimeProcess implements FullstackRuntimeProcess {
@@ -132,41 +136,44 @@ class ChildProcessRuntimeProcess implements FullstackRuntimeProcess {
 async function startProcess(
   spec: Parameters<FullstackRuntimeDependencies["startProcess"]>[0],
 ): Promise<FullstackRuntimeProcess> {
-  const command = process.platform === "win32" && spec.command === "npm" ? "cmd.exe" : spec.command;
-  const args = process.platform === "win32" && spec.command === "npm"
-    ? ["/d", "/s", "/c", "npm", ...spec.args]
-    : spec.args;
-  const child = spawn(command, args, {
-    cwd: spec.cwd,
-    env: { ...process.env, ...spec.env },
-    windowsHide: true,
-  });
-
-  let stderr = "";
-  const runtimeProcess = new ChildProcessRuntimeProcess(spec.name, child);
-  child.stderr.on("data", (chunk: Buffer) => {
-    const text = chunk.toString();
-    stderr += text;
-    runtimeProcess.push("stderr", text);
-  });
-  child.stdout.on("data", (chunk: Buffer) => {
-    runtimeProcess.push("stdout", chunk.toString());
-  });
-
-  await new Promise<void>((resolveStart, rejectStart) => {
-    const timer = setTimeout(resolveStart, 200);
-    child.once("error", (error) => {
-      clearTimeout(timer);
-      rejectStart(error);
+  return timePerf("fullstack.startProcess", async () => {
+    const command = process.platform === "win32" && spec.command === "npm" ? "cmd.exe" : spec.command;
+    const args =
+      process.platform === "win32" && spec.command === "npm"
+        ? ["/d", "/s", "/c", "npm", ...spec.args]
+        : spec.args;
+    const child = spawn(command, args, {
+      cwd: spec.cwd,
+      env: { ...process.env, ...spec.env },
+      windowsHide: true,
     });
-    child.once("exit", (code) => {
-      clearTimeout(timer);
-      rejectStart(new Error(`${spec.name} process exited during startup with code ${code}: ${stderr.trim()}`));
-    });
-  });
 
-  runtimeProcess.push("system", `${spec.name} process started in ${spec.cwd}`);
-  return runtimeProcess;
+    let stderr = "";
+    const runtimeProcess = new ChildProcessRuntimeProcess(spec.name, child);
+    child.stderr.on("data", (chunk: Buffer) => {
+      const text = chunk.toString();
+      stderr += text;
+      runtimeProcess.push("stderr", text);
+    });
+    child.stdout.on("data", (chunk: Buffer) => {
+      runtimeProcess.push("stdout", chunk.toString());
+    });
+
+    await new Promise<void>((resolveStart, rejectStart) => {
+      const timer = setTimeout(resolveStart, 200);
+      child.once("error", (error) => {
+        clearTimeout(timer);
+        rejectStart(error);
+      });
+      child.once("exit", (code) => {
+        clearTimeout(timer);
+        rejectStart(new Error(`${spec.name} process exited during startup with code ${code}: ${stderr.trim()}`));
+      });
+    });
+
+    runtimeProcess.push("system", `${spec.name} process started in ${spec.cwd}`);
+    return runtimeProcess;
+  }, { name: spec.name });
 }
 
 async function waitForHttp(url: string, label: "backend" | "frontend"): Promise<void> {
@@ -181,7 +188,7 @@ async function waitForHttp(url: string, label: "backend" | "frontend"): Promise<
     } catch (error) {
       lastError = error;
     }
-    await new Promise((resolveWait) => setTimeout(resolveWait, 250));
+    await new Promise((resolveWait) => setTimeout(resolveWait, 100));
   }
 
   throw new Error(
@@ -192,23 +199,30 @@ async function waitForHttp(url: string, label: "backend" | "frontend"): Promise<
 export function createFullstackRuntimeDependencies(): FullstackRuntimeDependencies {
   return {
     async allocatePorts() {
-      const backendPort = await findFreePort(DEFAULT_BACKEND_PORT);
-      const frontendPort = await findFreePort(
-        backendPort === DEFAULT_FRONTEND_PORT ? DEFAULT_FRONTEND_PORT + 1 : DEFAULT_FRONTEND_PORT,
-      );
-      return { backendPort, frontendPort };
+      return timePerf("fullstack.allocatePorts", async () => {
+        const backendPort = await findFreePort(DEFAULT_BACKEND_PORT);
+        const frontendPort = await findFreePort(
+          backendPort === DEFAULT_FRONTEND_PORT ? DEFAULT_FRONTEND_PORT + 1 : DEFAULT_FRONTEND_PORT,
+        );
+        return { backendPort, frontendPort };
+      });
     },
     prepareWorkspace,
     startProcess,
-    waitForHttp,
+    async waitForHttp(url, label) {
+      return timePerf("fullstack.waitForHttp", () => waitForHttp(url, label), { label, url });
+    },
     async cleanupWorkspace(dirs) {
+      const endPerf = startPerfSpan("fullstack.cleanupWorkspace", { root: dirs.root });
       for (let attempt = 0; attempt < 5; attempt += 1) {
         try {
           await rm(dirs.root, { recursive: true, force: true, maxRetries: 3, retryDelay: 200 });
+          endPerf();
           return;
         } catch (error) {
           const code = (error as NodeJS.ErrnoException).code;
           if (attempt === 4) {
+            endPerf();
             if (code === "EBUSY" || code === "EPERM") return;
             throw error;
           }
@@ -221,7 +235,17 @@ export function createFullstackRuntimeDependencies(): FullstackRuntimeDependenci
 
 export async function startFullstackRuntime(
   loaded: LoadedScenario,
-  options: { files?: readonly (ServedWorkspaceFile | SessionFile)[]; purpose?: "preview" | "verification" } = {},
+  options: {
+    files?: readonly (ServedWorkspaceFile | SessionFile)[];
+    purpose?: "preview" | "verification";
+    targets?: FullstackRuntimeTargets;
+  } = {},
 ): Promise<FullstackRuntimeHandle> {
-  return startFullstackRuntimeCore(loaded, createFullstackRuntimeDependencies(), options);
+  return timePerf("fullstack.startRuntime", () => startFullstackRuntimeCore(loaded, createFullstackRuntimeDependencies(), options), {
+    slug: loaded.slug,
+    purpose: options.purpose,
+    backend: options.targets?.backend ?? true,
+    frontend: options.targets?.frontend ?? true,
+  });
 }
+

@@ -18,6 +18,9 @@
     "scenario:test:fullstack:frontend": "tsx scripts/fullstack-scenario-tests.ts frontend",
     "scenario:test:fullstack:integration": "tsx scripts/fullstack-scenario-tests.ts integration",
     "generate:monaco-libs": "node scripts/generate-monaco-libs.mjs",
+    "sandbox:build": "docker build -t ace-ai-ml-runner:1 docker/ml-runner",
+    "sandbox:verify": "vitest run server/scenarios/sandbox/container-sandbox-executor.integration.test.ts",
+    "sandbox:clean": "tsx scripts/sandbox-clean.ts",
     "format": "prettier --write .",
     "format:check": "prettier --check ."
   },

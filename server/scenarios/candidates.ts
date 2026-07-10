@@ -1,14 +1,12 @@
 import "server-only";
 
-import { readFileSync } from "node:fs";
-import { join } from "node:path";
-import { parseScenario } from "@/lib/scenarios/parse";
-import { findScenarioLocations } from "@/server/scenarios/load";
+import { listScenarioFrontmatterEntries } from "@/server/scenarios/load";
 import { scenarioToCandidate } from "@/lib/scenarios/selection/adapters";
 import { isPublicScenario } from "@/lib/scenarios/visibility";
 import { scenarioTypeOf } from "@/lib/scenarios/scenario-type";
 import type { ScenarioPickerOption } from "@/lib/scenarios/types";
 import type { ScenarioCandidate } from "@/lib/scenarios/selection/types";
+import { timePerf } from "@/server/scenarios/perf";
 
 /**
  * Server-side data half of the selection service: every scenario's frontmatter as
@@ -21,26 +19,20 @@ import type { ScenarioCandidate } from "@/lib/scenarios/selection/types";
  * contains selection logic itself.
  */
 export async function listScenarioCandidates(): Promise<ScenarioCandidate[]> {
-  const candidates: ScenarioCandidate[] = [];
-  for (const loc of findScenarioLocations()) {
-    try {
-      const raw = readFileSync(join(loc.dir, "scenario.md"), "utf8");
-      const { scenario } = parseScenario(raw);
+  return timePerf("scenario.listCandidates", async () => {
+    const candidates: ScenarioCandidate[] = [];
+    for (const { loc, scenario } of listScenarioFrontmatterEntries()) {
       if (!isPublicScenario(scenario)) continue;
       candidates.push(scenarioToCandidate(scenario, loc.slug));
-    } catch (e) {
-      console.warn(`Skipping invalid scenario '${loc.slug}': ${(e as Error).message}`);
     }
-  }
-  return candidates;
+    return candidates;
+  });
 }
 
 export async function listScenarioPickerOptions(): Promise<ScenarioPickerOption[]> {
-  const options: ScenarioPickerOption[] = [];
-  for (const loc of findScenarioLocations()) {
-    try {
-      const raw = readFileSync(join(loc.dir, "scenario.md"), "utf8");
-      const { scenario } = parseScenario(raw);
+  return timePerf("scenario.listPickerOptions", async () => {
+    const options: ScenarioPickerOption[] = [];
+    for (const { loc, scenario } of listScenarioFrontmatterEntries()) {
       if (!isPublicScenario(scenario)) continue;
       options.push({
         slug: loc.slug,
@@ -62,9 +54,7 @@ export async function listScenarioPickerOptions(): Promise<ScenarioPickerOption[
           prompt: step.prompt,
         })),
       });
-    } catch (e) {
-      console.warn(`Skipping invalid scenario '${loc.slug}': ${(e as Error).message}`);
     }
-  }
-  return options.sort((a, b) => a.title.localeCompare(b.title));
+    return options.sort((a, b) => a.title.localeCompare(b.title));
+  });
 }

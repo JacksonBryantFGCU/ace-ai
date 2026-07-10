@@ -1,6 +1,7 @@
 import {
   isFullstackRuntimeScenario,
   type FullstackRuntimeHandle,
+  type FullstackRuntimeTargets,
 } from "@/lib/scenarios/fullstack-runtime";
 import type { LoadedScenario, ServedWorkspaceFile, SessionFile } from "@/lib/scenarios/types";
 
@@ -37,7 +38,13 @@ export interface FullstackTestRunResult {
 }
 
 export interface FullstackTestRunnerDependencies {
-  startRuntime(loaded: LoadedScenario, options: { files: readonly (ServedWorkspaceFile | SessionFile)[] }): Promise<FullstackRuntimeHandle>;
+  startRuntime(
+    loaded: LoadedScenario,
+    options: {
+      files: readonly (ServedWorkspaceFile | SessionFile)[];
+      targets?: FullstackRuntimeTargets;
+    },
+  ): Promise<FullstackRuntimeHandle>;
   runLayer(input: FullstackLayerRunInput): Promise<FullstackLayerResult>;
 }
 
@@ -48,6 +55,12 @@ export interface FullstackTestRunOptions {
 
 function filesForLayer(files: readonly FullstackAuthoredTestFile[], layer: FullstackTestLayer): FullstackAuthoredTestFile[] {
   return files.filter((file) => file.path.startsWith(`tests/${layer}/`));
+}
+
+function runtimeTargetsForLayer(layer: FullstackTestLayer): FullstackRuntimeTargets {
+  if (layer === "backend") return { backend: false, frontend: false };
+  if (layer === "frontend") return { backend: true, frontend: false };
+  return { backend: true, frontend: true };
 }
 
 export function parseFullstackTestLayer(value: string | undefined): FullstackTestLayer | "all" {
@@ -69,35 +82,50 @@ export async function runFullstackScenarioTests(
   const files = options.files ?? loaded.files;
   const requested = options.layers ?? FULLSTACK_TEST_LAYERS;
   const layers: FullstackLayerResult[] = [];
+  const selected = new Map<FullstackTestLayer, FullstackAuthoredTestFile[]>(
+    FULLSTACK_TEST_LAYERS.map((layer) => [layer, filesForLayer(authoredTests, layer)]),
+  );
+  const shouldShareFullRuntime = requested.includes("frontend") && requested.includes("integration");
+  let sharedRuntime: FullstackRuntimeHandle | null = null;
 
-  for (const layer of requested) {
-    const testFiles = filesForLayer(authoredTests, layer);
-    if (testFiles.length === 0) {
-      layers.push({
-        layer,
-        status: layer === "frontend" ? "skipped" : "failed",
-        message:
-          layer === "frontend"
-            ? "No frontend tests found; frontend unit tests are optional for V1 fullstack scenarios."
-            : `No ${layer} tests found.`,
-        durationMs: 0,
-      });
-      continue;
-    }
+  try {
+    for (const layer of requested) {
+      const testFiles = selected.get(layer) ?? [];
+      if (testFiles.length === 0) {
+        layers.push({
+          layer,
+          status: layer === "frontend" ? "skipped" : "failed",
+          message:
+            layer === "frontend"
+              ? "No frontend tests found; frontend unit tests are optional for V1 fullstack scenarios."
+              : `No ${layer} tests found.`,
+          durationMs: 0,
+        });
+        continue;
+      }
 
-    if (layer !== "integration") {
-      layers.push(await deps.runLayer({ layer, testFiles, loaded, files }));
-      continue;
-    }
+      let runtime: FullstackRuntimeHandle | undefined;
+      let ownsRuntime = false;
+      if (layer === "frontend" && shouldShareFullRuntime && (selected.get("integration")?.length ?? 0) > 0) {
+        sharedRuntime ??= await deps.startRuntime(loaded, { files, targets: { backend: true, frontend: true } });
+        runtime = sharedRuntime;
+      } else if (layer === "integration" && sharedRuntime) {
+        runtime = sharedRuntime;
+      } else {
+        runtime = await deps.startRuntime(loaded, { files, targets: runtimeTargetsForLayer(layer) });
+        ownsRuntime = true;
+      }
 
-    for (const testFile of testFiles) {
-      const runtime = await deps.startRuntime(loaded, { files });
       try {
-        layers.push(await deps.runLayer({ layer, testFiles: [testFile], loaded, files, runtime }));
+        layers.push(await deps.runLayer({ layer, testFiles, loaded, files, runtime }));
       } finally {
-        await runtime.stop();
+        if (ownsRuntime) {
+          await runtime.stop();
+        }
       }
     }
+  } finally {
+    await sharedRuntime?.stop();
   }
 
   return {

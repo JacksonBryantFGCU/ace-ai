@@ -4,6 +4,8 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useScenarioSession } from "@/hooks/use-scenario-session";
 import { useInterviewMachine } from "@/hooks/use-interview-machine";
 import { useVerification } from "@/hooks/use-verification";
+import { useFinalVerification } from "@/hooks/use-final-verification";
+import { useMlPreview } from "@/hooks/use-ml-preview";
 import { useEvaluation } from "@/hooks/use-evaluation";
 import { fetchCheckpoint } from "@/actions/scenario";
 import { buildInterviewResult } from "@/lib/scenarios/interview-result";
@@ -40,6 +42,8 @@ export function useInterviewController(loaded: LoadedScenario) {
   );
   const machine = useInterviewMachine(descriptors);
   const verification = useVerification();
+  const finalVerification = useFinalVerification();
+  const mlPreview = useMlPreview();
   const evaluation = useEvaluation();
 
   const [verificationByStep, setVerificationByStep] = useState<Record<string, VerificationResult>>({});
@@ -198,7 +202,7 @@ export function useInterviewController(loaded: LoadedScenario) {
       next: () => {
         const step = stateRef.current.steps[stateRef.current.stepIndex];
         if (
-          stepVerificationMode === "scenario-step" &&
+          (stepVerificationMode === "scenario-step" || stepVerificationMode === "python-step") &&
           step &&
           !canAdvanceAfterVerification(step.status)
         ) {
@@ -212,7 +216,7 @@ export function useInterviewController(loaded: LoadedScenario) {
         const step = stateRef.current.steps[currentIndex];
         if (
           index > currentIndex &&
-          stepVerificationMode === "scenario-step" &&
+          (stepVerificationMode === "scenario-step" || stepVerificationMode === "python-step") &&
           step &&
           !canAdvanceAfterVerification(step.status)
         ) {
@@ -238,6 +242,29 @@ export function useInterviewController(loaded: LoadedScenario) {
     setConversation(conversationRef.current);
   }, []);
 
+  // Final validation (Phase 4): NOT part of the `InterviewController` contract
+  // (no voice/replay client drives it today) — exposed directly, the same way
+  // `verification`/`session` already are, for the final-step UI to call.
+  const { run: runFinal } = finalVerification;
+  const runFinalVerification = useCallback(async () => {
+    await runFinal({
+      scenarioSlug: loaded.slug,
+      files: sessionRef.current.session.files.map((f) => ({ path: f.path, content: f.content, role: f.role })),
+    });
+  }, [runFinal, loaded.slug]);
+
+  // ML Output Preview: NOT part of the `InterviewController` contract either —
+  // it's a script run, not verification, so it must never call
+  // `actions.recordResult`/touch step state. Same exposure pattern as
+  // `finalVerification` above.
+  const { run: runMlPreviewScript } = mlPreview;
+  const runMlPreviewScriptForSession = useCallback(async () => {
+    await runMlPreviewScript({
+      scenarioSlug: loaded.slug,
+      files: sessionRef.current.session.files.map((f) => ({ path: f.path, content: f.content, role: f.role })),
+    });
+  }, [runMlPreviewScript, loaded.slug]);
+
   return {
     controller,
     recordConversation,
@@ -245,6 +272,8 @@ export function useInterviewController(loaded: LoadedScenario) {
     machine,
     session,
     verification,
+    finalVerification: { ...finalVerification, run: runFinalVerification },
+    mlPreview: { ...mlPreview, run: runMlPreviewScriptForSession },
     evaluation,
     verificationByStep,
   };

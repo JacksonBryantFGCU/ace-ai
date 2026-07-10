@@ -8,7 +8,7 @@ import type { ScenarioType } from "@/lib/scenarios/schema";
 
 export const ALL_FILTER = "__all__";
 export const DIFFICULTY_ORDER = ["easy", "medium", "hard"] as const;
-export const ROLE_GROUP_ORDER: ScenarioRoleFamily[] = ["frontend", "backend", "fullstack", "other"];
+export const ROLE_GROUP_ORDER: ScenarioRoleFamily[] = ["frontend", "backend", "fullstack", "machine-learning", "other"];
 
 export interface CatalogScenario {
   slug: string;
@@ -45,6 +45,7 @@ const ROLE_GROUP_LABELS: Record<ScenarioRoleFamily, string> = {
   frontend: "Frontend",
   backend: "Backend",
   fullstack: "Full-Stack",
+  "machine-learning": "Machine Learning",
   other: "Other",
 };
 

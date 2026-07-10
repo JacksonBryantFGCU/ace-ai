@@ -168,4 +168,158 @@ describe("ScenarioTab", () => {
     expect(html).toContain("integration");
     expect(html).not.toContain("fullstack scenario test runner instead of the single-file verification button");
   });
+
+  it("uses Python check labels and renders the grouped python result for ML steps", () => {
+    const step: ScenarioStep = {
+      id: "train-model",
+      kind: "implement",
+      prompt: "Train the baseline model.",
+      verification: "automated-tests",
+      verify: { harness: "python", tests: ["tests/step-1.test.py"] },
+      weight: 100,
+    };
+    const result: VerificationResult = {
+      engine: "machine-learning",
+      mode: "python-step",
+      scenarioSlug: "ml-fixture",
+      stepIndex: 0,
+      status: "passed",
+      passed: true,
+      durationMs: 340,
+      finishedAt: Date.now(),
+      errors: [],
+      message: "Step checks passed.",
+      groups: [
+        { name: "python", ok: true, command: "python -m pytest -q", output: "stdout:\n1 passed\n", durationMs: 340 },
+      ],
+      testResults: [],
+    };
+
+    const html = renderToStaticMarkup(
+      createElement(ScenarioTab, {
+        steps: [step],
+        machine: {
+          state: {
+            phase: "in_progress",
+            stepIndex: 0,
+            steps: [{ id: "train-model", status: "passed", revealedHints: 0, hintCount: 0, response: "" }],
+            log: [],
+          },
+          current: { id: "train-model", status: "passed", revealedHints: 0, hintCount: 0, response: "" },
+          lastStep: true,
+          complete: false,
+        },
+        controller: {
+          goTo() {},
+          revealHint() {},
+          offerCheckpoint() {},
+          prev() {},
+          next() {},
+        },
+        verification: {
+          supported: true,
+          mode: "python-step",
+          running: false,
+          result,
+          onRun() {},
+          runLabel: "Run step checks",
+          runningLabel: "Running Python checks...",
+        },
+        checkpoint: {
+          available: false,
+          applied: false,
+          onUse() {},
+        },
+        finalCheck: {
+          visible: true,
+          running: false,
+          result: null,
+          onRun() {},
+        },
+      } as never),
+    );
+
+    expect(html).toContain("Run step checks");
+    expect(html).toContain("Step checks passed.");
+    expect(html).toContain("python -m pytest -q");
+    expect(html).not.toContain("No separate metrics report for this scenario yet.");
+    expect(html).not.toContain("Skipped");
+    expect(html).toContain("Run final checks");
+    expect(html).not.toContain("API preview");
+    expect(html).not.toContain("Frontend preview");
+  });
+
+  it("shows the final validation result on the last step once it has run", () => {
+    const step: ScenarioStep = {
+      id: "train-model",
+      kind: "implement",
+      prompt: "Train the baseline model.",
+      verification: "automated-tests",
+      verify: { harness: "python", tests: ["tests/step-1.test.py"] },
+      weight: 100,
+    };
+    const finalResult: VerificationResult = {
+      engine: "machine-learning",
+      mode: "python-final",
+      scenarioSlug: "ml-fixture",
+      status: "failed",
+      passed: false,
+      durationMs: 500,
+      finishedAt: Date.now(),
+      errors: [{ message: "Python checks failed (exit code 1).", kind: "python" }],
+      message: "Final checks failed.",
+      groups: [
+        { name: "python", ok: false, command: "python -m pytest -q", output: "stderr:\n1 failed\n", durationMs: 500 },
+      ],
+      testResults: [],
+    };
+
+    const html = renderToStaticMarkup(
+      createElement(ScenarioTab, {
+        steps: [step],
+        machine: {
+          state: {
+            phase: "in_progress",
+            stepIndex: 0,
+            steps: [{ id: "train-model", status: "passed", revealedHints: 0, hintCount: 0, response: "" }],
+            log: [],
+          },
+          current: { id: "train-model", status: "passed", revealedHints: 0, hintCount: 0, response: "" },
+          lastStep: true,
+          complete: false,
+        },
+        controller: {
+          goTo() {},
+          revealHint() {},
+          offerCheckpoint() {},
+          prev() {},
+          next() {},
+        },
+        verification: {
+          supported: true,
+          mode: "python-step",
+          running: false,
+          result: null,
+          onRun() {},
+          runLabel: "Run step checks",
+          runningLabel: "Running Python checks...",
+        },
+        checkpoint: {
+          available: false,
+          applied: false,
+          onUse() {},
+        },
+        finalCheck: {
+          visible: true,
+          running: false,
+          result: finalResult,
+          onRun() {},
+        },
+      } as never),
+    );
+
+    expect(html).toContain("Run final checks");
+    expect(html).toContain("Final checks failed.");
+    expect(html).toContain("1 failed");
+  });
 });

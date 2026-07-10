@@ -68,7 +68,7 @@ rubric:
     detail: "Uses accessible labels, clear controls, and predictable feedback during loading, errors, and saves."
 source: authored
 status: verified
-visibility: public
+visibility: internal
 version: 1
 steps:
   - id: load-feedback

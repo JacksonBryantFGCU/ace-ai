@@ -67,4 +67,22 @@ describe("criteriaFromConfig", () => {
       scenarioType: "fullstack",
     });
   });
+
+  it("constrains ml setup to machine-learning scenario selection", () => {
+    const config: VapiInterviewConfig = {
+      role: "ml",
+      difficulty: "medium",
+      experience: "junior",
+      strictness: "balanced",
+      questionType: "technical",
+      interviewer: "cassidy",
+    };
+    expect(criteriaFromConfig(config)).toEqual({
+      interviewType: "technical",
+      jobRole: "ml",
+      difficulty: "medium",
+      experience: "junior",
+      scenarioType: "machine-learning",
+    });
+  });
 });

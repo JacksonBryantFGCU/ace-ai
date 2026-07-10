@@ -101,30 +101,56 @@ describe("fullstack scenario test runner", () => {
     ).rejects.toThrow(/not a fullstack runtime scenario/);
   });
 
-  it("runs backend and frontend layers without starting integration runtime itself", async () => {
-    const { dependencies, calls } = deps();
+  it("starts only the runtime targets each non-backend layer needs", async () => {
+    const { dependencies, calls, stops } = deps();
     const result = await runFullstackScenarioTests(loaded(), tests, dependencies, { layers: ["backend", "frontend"] });
 
     expect(result.status).toBe("passed");
     expect(calls.map((call) => call.layer)).toEqual(["backend", "frontend"]);
     expect(calls[0]?.testFiles.map((file) => file.path)).toEqual(["tests/backend/api.test.ts"]);
     expect(calls[1]?.testFiles.map((file) => file.path)).toEqual(["tests/frontend/ui.test.tsx"]);
-    expect(dependencies.startRuntime).not.toHaveBeenCalled();
+    expect(dependencies.startRuntime).toHaveBeenCalledTimes(2);
+    expect(vi.mocked(dependencies.startRuntime).mock.calls.map(([, options]) => options.targets)).toEqual([
+      { backend: false, frontend: false },
+      { backend: true, frontend: false },
+    ]);
+    expect(stops).toEqual(["runtime", "runtime"]);
   });
 
-  it("starts a fresh fullstack runtime for each integration test file and stops it", async () => {
+  it("reuses one full runtime for the integration layer and stops it once", async () => {
     const { dependencies, calls, stops } = deps();
 
     const result = await runFullstackScenarioTests(loaded(), tests, dependencies, { layers: ["integration"] });
 
     expect(result.status).toBe("passed");
-    expect(dependencies.startRuntime).toHaveBeenCalledTimes(2);
-    expect(calls.map((call) => call.testFiles[0]?.path)).toEqual([
+    expect(dependencies.startRuntime).toHaveBeenCalledTimes(1);
+    expect(calls).toHaveLength(1);
+    expect(calls[0]?.testFiles.map((file) => file.path)).toEqual([
       "tests/integration/create-item.spec.ts",
       "tests/integration/reload.spec.ts",
     ]);
-    expect(calls.every((call) => call.runtime?.previewUrl === "http://localhost:5173")).toBe(true);
-    expect(stops).toEqual(["runtime", "runtime"]);
+    expect(calls[0]?.runtime?.previewUrl).toBe("http://localhost:5173");
+    expect(stops).toEqual(["runtime"]);
+  });
+
+  it("shares a single full runtime between frontend and integration when both layers are requested", async () => {
+    const { dependencies, calls, stops } = deps();
+
+    const result = await runFullstackScenarioTests(loaded(), tests, dependencies, {
+      layers: ["frontend", "integration"],
+    });
+
+    expect(result.status).toBe("passed");
+    expect(dependencies.startRuntime).toHaveBeenCalledTimes(1);
+    expect(vi.mocked(dependencies.startRuntime).mock.calls[0]?.[1].targets).toEqual({
+      backend: true,
+      frontend: true,
+    });
+    expect(calls.map((call) => [call.layer, call.runtime?.previewUrl])).toEqual([
+      ["frontend", "http://localhost:5173"],
+      ["integration", "http://localhost:5173"],
+    ]);
+    expect(stops).toEqual(["runtime"]);
   });
 
   it("skips absent frontend tests but fails absent required backend/integration tests", async () => {

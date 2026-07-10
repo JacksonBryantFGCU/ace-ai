@@ -36,7 +36,7 @@ export function VerificationResultCard({ result }: { result: VerificationResult 
               {group.reason ? <p className="mt-2 text-xs text-gray-400">{group.reason}</p> : null}
               {group.command ? <p className="mt-2 break-all text-[11px] text-gray-500">{group.command}</p> : null}
               {group.output ? (
-                <pre className="mt-2 max-h-40 overflow-auto whitespace-pre-wrap rounded bg-black/30 p-2 text-[11px] text-gray-300">
+                <pre className="mt-2 max-h-40 overflow-auto rounded bg-black/30 p-2 font-mono text-[11px] whitespace-pre-wrap text-gray-300">
                   {group.output}
                 </pre>
               ) : null}

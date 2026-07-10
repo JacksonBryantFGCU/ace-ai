@@ -327,6 +327,7 @@ function categoryLabel(scenario: ScenarioPickerOption): string {
 
   if (categoryTokens.includes("react") || tagValues.get("framework") === "react") segments.push("React");
   if (categoryTokens.includes("node") || scenario.runtime === "node") segments.push("Node");
+  if (categoryTokens.includes("python") || scenario.runtime === "python") segments.push("Python");
 
   const framework = scenario.framework?.trim().toLowerCase();
   if (framework && !segments.some((segment) => segment.toLowerCase() === framework)) {

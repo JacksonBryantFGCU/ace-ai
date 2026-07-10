@@ -52,6 +52,6 @@ export function criteriaFromConfig(config: VapiInterviewConfig): SelectionCriter
     jobRole: config.role,
     difficulty: config.difficulty,
     experience: config.experience,
-    scenarioType: config.role === "fullstack" ? "fullstack" : undefined,
+    scenarioType: config.role === "fullstack" ? "fullstack" : config.role === "ml" ? "machine-learning" : undefined,
   };
 }

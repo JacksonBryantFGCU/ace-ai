@@ -2,6 +2,7 @@ import "server-only";
 
 import { executionPlatform } from "@/server/scenarios/execution-platform";
 import { verifyScenarioStep } from "@/server/scenarios/fullstack-step-verification";
+import { verifyMlFinal, verifyMlStep } from "@/server/scenarios/machine-learning-step-verification";
 import { testSource } from "@/server/scenarios/test-source";
 import { databaseSource } from "@/server/scenarios/database-source";
 import { loadScenario } from "@/server/scenarios/load";
@@ -10,7 +11,7 @@ import { profileFromHarness, resolveExecutionProfile, type ExecutionProfile } fr
 import { resolveVerificationMode } from "@/lib/scenarios/verification-mode";
 import type { AuthoredTestFile } from "@/lib/scenarios/engines/contracts";
 import type { ExecutionContext } from "@/lib/scenarios/execution/context";
-import type { VerificationResult, VerifyInput } from "@/lib/scenarios/verification";
+import type { SnapshotFile, VerificationResult, VerifyInput } from "@/lib/scenarios/verification";
 
 /**
  * The server-side verification entrypoint — unchanged signature, new internals.
@@ -32,7 +33,9 @@ let queue: Promise<unknown> = Promise.resolve();
 export function verifyStepOnServer(input: VerifyInput): Promise<VerificationResult> {
   const run = queue.then(async () => {
     const loaded = await loadScenario(input.scenarioSlug, { includeAuthorOnly: false });
-    if (resolveVerificationMode(loaded.scenario, "step") === "scenario-step") {
+    const mode = resolveVerificationMode(loaded.scenario, "step");
+
+    if (mode === "scenario-step") {
       const stepIndex = loaded.scenario.steps.findIndex((step) => step.id === input.step.id);
       if (stepIndex === -1) {
         throw new Error(`step not found: '${input.step.id}' in '${input.scenarioSlug}'`);
@@ -44,11 +47,65 @@ export function verifyStepOnServer(input: VerifyInput): Promise<VerificationResu
       });
     }
 
+    if (mode === "python-step") {
+      const stepIndex = loaded.scenario.steps.findIndex((step) => step.id === input.step.id);
+      if (stepIndex === -1) {
+        throw new Error(`step not found: '${input.step.id}' in '${input.scenarioSlug}'`);
+      }
+      return verifyMlStep({
+        scenarioSlug: input.scenarioSlug,
+        stepIndex,
+        files: input.files,
+        timeoutMs: input.step.timeoutMs,
+      });
+    }
+
     ensureDomEnv();
     const context = await buildExecutionContext(input, loaded);
     return executionPlatform.verify(context);
   });
   // Keep the chain alive regardless of the individual run's outcome.
+  queue = run.then(
+    () => undefined,
+    () => undefined,
+  );
+  return run;
+}
+
+/**
+ * Final-submission verification (Phase 4 UI for the Phase 3 `python-final`
+ * verifier). Shares `verifyStepOnServer`'s queue so an ML final run never
+ * interleaves with a step run for the same process. Only `machine-learning`
+ * scenarios have a real final verifier today; every other type gets a clearly
+ * labeled "not available yet" manual result instead of silently doing nothing —
+ * harmless since no non-ML UI calls this yet (fullstack/backend behavior is
+ * unchanged either way).
+ */
+export function verifyFinalOnServer(input: {
+  scenarioSlug: string;
+  files: readonly SnapshotFile[];
+}): Promise<VerificationResult> {
+  const run = queue.then(async () => {
+    const loaded = await loadScenario(input.scenarioSlug, { includeAuthorOnly: false });
+    const mode = resolveVerificationMode(loaded.scenario, "final");
+
+    if (mode === "python-final") {
+      return verifyMlFinal({ scenarioSlug: input.scenarioSlug, files: input.files });
+    }
+
+    return {
+      engine: "final",
+      mode,
+      scenarioSlug: input.scenarioSlug,
+      status: "manual",
+      passed: false,
+      message: "Final validation is not available for this scenario type yet.",
+      durationMs: 0,
+      finishedAt: Date.now(),
+      errors: [],
+      testResults: [],
+    } satisfies VerificationResult;
+  });
   queue = run.then(
     () => undefined,
     () => undefined,

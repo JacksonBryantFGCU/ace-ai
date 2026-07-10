@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
-import { resolveVerificationMode } from "@/lib/scenarios/verification-mode";
+import { getPreviewPanelKind, resolveVerificationMode } from "@/lib/scenarios/verification-mode";
 import type { Scenario } from "@/lib/scenarios/schema";
+import type { VerificationMode } from "@/lib/scenarios/verification";
 
 function baseScenario(overrides: Partial<Scenario> = {}): Scenario {
   return {
@@ -80,5 +81,52 @@ describe("resolveVerificationMode", () => {
         "final",
       ),
     ).toBe("scenario-final");
+  });
+
+  it("defaults machine-learning scenarios to python-step verification during the interview", () => {
+    expect(
+      resolveVerificationMode(
+        baseScenario({
+          type: "machine-learning",
+          runtime: "python",
+          execution: { mode: "python-ml" },
+          workspace: {
+            files: [{ path: "main.py", role: "edit" }],
+            entry: "main.py",
+          },
+        }),
+      ),
+    ).toBe("python-step");
+  });
+
+  it("routes machine-learning final submission through python-final", () => {
+    expect(
+      resolveVerificationMode(
+        baseScenario({
+          type: "machine-learning",
+          runtime: "python",
+          execution: { mode: "python-ml" },
+          workspace: {
+            files: [{ path: "main.py", role: "edit" }],
+            entry: "main.py",
+          },
+        }),
+        "final",
+      ),
+    ).toBe("python-final");
+  });
+});
+
+describe("getPreviewPanelKind", () => {
+  it("routes machine-learning verification modes to the ML notebook preview panel", () => {
+    expect(getPreviewPanelKind("python-step")).toBe("ml");
+    expect(getPreviewPanelKind("python-final")).toBe("ml");
+  });
+
+  it("routes every other verification mode to the standard preview panel (backend/fullstack/frontend unaffected)", () => {
+    const otherModes: VerificationMode[] = ["single-file", "scenario-step", "scenario-final"];
+    for (const mode of otherModes) {
+      expect(getPreviewPanelKind(mode)).toBe("standard");
+    }
   });
 });

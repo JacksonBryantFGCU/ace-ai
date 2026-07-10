@@ -9,6 +9,7 @@ import {
   type ValidateOptions,
 } from "@/lib/scenarios/authoring/validate";
 import { createExecutionPlatform } from "@/lib/scenarios/execution/platform-factory";
+import { realMlStepVerificationDependencies } from "@/server/scenarios/machine-learning-verification-dependencies";
 import type { AuthoredBundle, ScenarioReport } from "@/lib/scenarios/authoring/types";
 
 /**
@@ -152,9 +153,18 @@ export async function validateScenarios(
       })()
     : undefined;
 
+  // Machine-learning solutions are validated by the SAME real dependencies
+  // production interview verification uses (pytest, plus — only when a
+  // scenario configures `execution.artifacts.metrics.required: true` — the
+  // real Output Preview runtime to run `main.py` and read back an artifact).
+  // See `lib/scenarios/authoring/machine-learning-solution.ts`.
+  const mlDependencies: ValidateOptions["mlDependencies"] = options.runSolution
+    ? realMlStepVerificationDependencies
+    : undefined;
+
   const reports: ScenarioReport[] = [];
   for (const bundle of targets) {
-    const report = await validateScenario(bundle, { ...options, verify });
+    const report = await validateScenario(bundle, { ...options, verify, mlDependencies });
     const extra = cross.get(bundle.slug) ?? [];
     const diagnostics = [...report.diagnostics, ...extra];
     reports.push({ ...report, diagnostics, ok: !diagnostics.some((d) => d.level === "error") });

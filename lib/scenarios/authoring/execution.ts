@@ -1,6 +1,7 @@
 import { diag, type AuthoredBundle, type Diagnostic } from "@/lib/scenarios/authoring/types";
 import { resolveExecutionProfile, validateProfileCombo } from "@/lib/scenarios/execution/profile";
 import { isUnsupportedModule } from "@/lib/scenarios/execution/engines/node/diagnostics";
+import { parseJsonPointer } from "@/lib/scenarios/machine-learning-metrics";
 
 const AT = "scenario.md → language/runtime/framework/verification";
 
@@ -43,6 +44,150 @@ export function validateExecution(bundle: AuthoredBundle): Diagnostic[] {
     out.push(...validateNodeImports(bundle, allowed));
     if (expressMode) out.push(...validateExpress(bundle));
     if (sqliteMode) out.push(...validateSqlite(bundle));
+  }
+
+  out.push(...validateMlMetricsArtifactConfig(bundle));
+
+  return out;
+}
+
+const MAX_METRICS_CONFIG_KEYS = 50;
+
+/** Semantic checks for the optional `execution.artifacts.metrics` config
+ *  (lib/scenarios/schema.ts) — the schema only checks shape; this checks the
+ *  things that make a config safe/sane to actually use: a relative,
+ *  non-traversing path, unique required keys, and reasonable sizes. A no-op
+ *  for the overwhelming majority of scenarios, which don't set this at all. */
+function validateMlMetricsArtifactConfig(bundle: AuthoredBundle): Diagnostic[] {
+  const { scenario } = bundle;
+  const metricsConfig = scenario?.execution?.artifacts?.metrics;
+  if (!metricsConfig) return [];
+
+  const out: Diagnostic[] = [];
+  const at = "scenario.md → execution.artifacts.metrics";
+
+  const path = metricsConfig.path ?? "metrics.json";
+  const normalized = path.replace(/\\/g, "/");
+  const isAbsolute = normalized.startsWith("/") || /^[A-Za-z]:/.test(normalized);
+  const traverses = normalized.split("/").some((segment) => segment === "..");
+  if (isAbsolute || traverses) {
+    out.push(
+      diag.error(
+        "execution/metrics-path-unsafe",
+        `${at} → path`,
+        `metrics artifact path "${path}" must be a relative path with no ".." traversal.`,
+        'Use a workspace-relative path such as "metrics.json" or "outputs/metrics.json".',
+      ),
+    );
+  }
+
+  const requiredPaths = metricsConfig.requiredPaths ?? [];
+  const invalidRequiredPath = requiredPaths.find((p) => parseJsonPointer(p) === null);
+  if (invalidRequiredPath !== undefined) {
+    out.push(
+      diag.error(
+        "execution/metrics-invalid-path",
+        `${at} → requiredPaths`,
+        `"${invalidRequiredPath}" is not a valid JSON Pointer (must be empty or start with "/", e.g. "/summary/accuracy").`,
+        'Use JSON Pointer syntax, e.g. "/summary/accuracy" or "/confusion_matrix".',
+      ),
+    );
+  }
+  const duplicates = requiredPaths.filter((p, i) => requiredPaths.indexOf(p) !== i);
+  if (duplicates.length > 0) {
+    out.push(
+      diag.error(
+        "execution/metrics-duplicate-required-key",
+        `${at} → requiredPaths`,
+        `requiredPaths lists "${duplicates[0]}" more than once.`,
+        "List each required path only once.",
+      ),
+    );
+  }
+  if (requiredPaths.length > MAX_METRICS_CONFIG_KEYS) {
+    out.push(
+      diag.error(
+        "execution/metrics-too-many-required-keys",
+        `${at} → requiredPaths`,
+        `requiredPaths has ${requiredPaths.length} entries, exceeding the ${MAX_METRICS_CONFIG_KEYS}-entry limit.`,
+        "Only require the metric paths that genuinely matter for this scenario's grading.",
+      ),
+    );
+  }
+
+  const expectedTypeKeys = Object.keys(metricsConfig.expectedTypes ?? {});
+  const invalidExpectedTypePath = expectedTypeKeys.find((p) => parseJsonPointer(p) === null);
+  if (invalidExpectedTypePath !== undefined) {
+    out.push(
+      diag.error(
+        "execution/metrics-invalid-path",
+        `${at} → expectedTypes`,
+        `"${invalidExpectedTypePath}" is not a valid JSON Pointer key in expectedTypes.`,
+        'Use JSON Pointer syntax, e.g. "/summary/accuracy": number.',
+      ),
+    );
+  }
+  if (expectedTypeKeys.length > MAX_METRICS_CONFIG_KEYS) {
+    out.push(
+      diag.error(
+        "execution/metrics-too-many-expected-types",
+        `${at} → expectedTypes`,
+        `expectedTypes has ${expectedTypeKeys.length} entries, exceeding the ${MAX_METRICS_CONFIG_KEYS}-entry limit.`,
+        "Only constrain the types of metric paths that genuinely matter for this scenario's grading.",
+      ),
+    );
+  }
+
+  const assertions = metricsConfig.assertions ?? [];
+  if (assertions.length > MAX_METRICS_CONFIG_KEYS) {
+    out.push(
+      diag.error(
+        "execution/metrics-too-many-assertions",
+        `${at} → assertions`,
+        `assertions has ${assertions.length} entries, exceeding the ${MAX_METRICS_CONFIG_KEYS}-entry limit.`,
+        "Only assert the structural constraints that genuinely matter for this scenario's grading.",
+      ),
+    );
+  }
+  for (const [i, assertion] of assertions.entries()) {
+    if (parseJsonPointer(assertion.path) === null) {
+      out.push(
+        diag.error(
+          "execution/metrics-invalid-path",
+          `${at} → assertions[${i}].path`,
+          `"${assertion.path}" is not a valid JSON Pointer.`,
+          'Use JSON Pointer syntax, e.g. "/summary/f1".',
+        ),
+      );
+    }
+    if (
+      assertion.minimum !== undefined &&
+      assertion.maximum !== undefined &&
+      assertion.minimum > assertion.maximum
+    ) {
+      out.push(
+        diag.error(
+          "execution/metrics-invalid-assertion-bounds",
+          `${at} → assertions[${i}]`,
+          `minimum (${assertion.minimum}) is greater than maximum (${assertion.maximum}).`,
+          "Ensure minimum <= maximum.",
+        ),
+      );
+    }
+    if (
+      assertion.minItems !== undefined &&
+      assertion.maxItems !== undefined &&
+      assertion.minItems > assertion.maxItems
+    ) {
+      out.push(
+        diag.error(
+          "execution/metrics-invalid-assertion-bounds",
+          `${at} → assertions[${i}]`,
+          `minItems (${assertion.minItems}) is greater than maxItems (${assertion.maxItems}).`,
+          "Ensure minItems <= maxItems.",
+        ),
+      );
+    }
   }
 
   return out;

@@ -126,6 +126,69 @@ describe("ScenarioPickerPage", () => {
     expect(screen.queryByText("Notes REST API")).not.toBeInTheDocument();
   });
 
+  it("machine learning role shows a clean empty state when no public ML scenarios exist", () => {
+    renderPicker({ role: "ml" });
+
+    expect(screen.getByText("No machine learning scenarios are available yet.")).toBeInTheDocument();
+    expect(screen.queryByText("Todo List")).not.toBeInTheDocument();
+    expect(screen.queryByText("Notes REST API")).not.toBeInTheDocument();
+    expect(screen.queryByText("Customer Ops Dashboard")).not.toBeInTheDocument();
+  });
+
+  it("machine learning role only shows machine-learning scenarios once they exist", () => {
+    render(
+      createElement(ScenarioPickerPage, {
+        config: { ...config, role: "ml" },
+        scenarios: [
+          ...scenarios,
+          option({
+            slug: "churn-model-baseline",
+            title: "Churn Model Baseline",
+            summary: "Train and evaluate a baseline churn classifier",
+            category: "machine-learning-python",
+            type: "machine-learning",
+            difficulty: "medium",
+            jobRoles: ["machine-learning"],
+            skills: ["pandas", "scikit-learn"],
+            runtime: "python",
+            framework: "scikit-learn",
+          }),
+        ],
+        recommendedSlug: null,
+      }),
+    );
+
+    expect(screen.getByText("Churn Model Baseline")).toBeInTheDocument();
+    expect(screen.queryByText("Todo List")).not.toBeInTheDocument();
+    expect(screen.queryByText("Notes REST API")).not.toBeInTheDocument();
+    expect(screen.queryByText("Customer Ops Dashboard")).not.toBeInTheDocument();
+  });
+
+  it("backend and fullstack roles never show machine-learning scenarios", () => {
+    const withMl = [
+      ...scenarios,
+      option({
+        slug: "churn-model-baseline",
+        title: "Churn Model Baseline",
+        category: "machine-learning-python",
+        type: "machine-learning",
+        jobRoles: ["machine-learning"],
+        runtime: "python",
+      }),
+    ];
+
+    const backendRender = render(
+      createElement(ScenarioPickerPage, { config: { ...config, role: "backend" }, scenarios: withMl, recommendedSlug: null }),
+    );
+    expect(screen.queryByText("Churn Model Baseline")).not.toBeInTheDocument();
+    backendRender.unmount();
+
+    render(
+      createElement(ScenarioPickerPage, { config: { ...config, role: "fullstack" }, scenarios: withMl, recommendedSlug: null }),
+    );
+    expect(screen.queryByText("Churn Model Baseline")).not.toBeInTheDocument();
+  });
+
   it("search filters scenarios by text and tags", () => {
     renderPicker({ role: "fullstack" });
 
@@ -169,6 +232,62 @@ describe("ScenarioPickerPage", () => {
     fireEvent.click(screen.getByRole("button", { name: /Customer Ops Dashboard/ }));
 
     expect(screen.getAllByText("Fullstack / React / Node / Express / SQLite").length).toBeGreaterThan(0);
+  });
+
+  it("ML scenario card shows title, difficulty, estimated time, and a readable category/track label", () => {
+    render(
+      createElement(ScenarioPickerPage, {
+        config: { ...config, role: "ml" },
+        scenarios: [
+          option({
+            slug: "churn-model-baseline",
+            title: "Churn Model Baseline",
+            summary: "Train and evaluate a baseline churn classifier",
+            category: "machine-learning-python",
+            type: "machine-learning",
+            difficulty: "hard",
+            jobRoles: ["machine-learning"],
+            skills: ["pandas", "scikit-learn"],
+            runtime: "python",
+            framework: "scikit-learn",
+            estimatedMinutes: 45,
+          }),
+        ],
+        recommendedSlug: null,
+      }),
+    );
+
+    expect(screen.getByText("Churn Model Baseline")).toBeInTheDocument();
+    expect(screen.getByText("hard")).toBeInTheDocument();
+    expect(screen.getByText("Machine-learning")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: /Churn Model Baseline/ }));
+    expect(screen.getAllByText("Machine learning / Python / Scikit-learn").length).toBeGreaterThan(0);
+  });
+
+  it("launching a machine-learning scenario fixture submits its slug the same way any other scenario does", async () => {
+    vi.mocked(chooseTechnicalScenario).mockResolvedValue(undefined);
+    render(
+      createElement(ScenarioPickerPage, {
+        config: { ...config, role: "ml" },
+        scenarios: [
+          option({
+            slug: "churn-model-baseline",
+            title: "Churn Model Baseline",
+            category: "machine-learning-python",
+            type: "machine-learning",
+            jobRoles: ["machine-learning"],
+            runtime: "python",
+          }),
+        ],
+        recommendedSlug: null,
+      }),
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: /Churn Model Baseline/ }));
+    fireEvent.click(screen.getByRole("button", { name: "Start Interview" }));
+
+    expect(chooseTechnicalScenario).toHaveBeenCalledWith("churn-model-baseline");
   });
 
   it("selected scenario enables Start Interview and submits the slug", async () => {

@@ -1,16 +1,25 @@
 "use client";
 
-import { FileText, MessageCircle, SquarePen, User } from "lucide-react";
+import { Database, FileText, MessageCircle, SquarePen, User } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { shell } from "@/components/scenario/shell/tokens";
 
-export type PanelTab = "explorer" | "scenario" | "conversation";
+export type PanelTab = "explorer" | "scenario" | "data" | "conversation";
 
 const TABS: { id: PanelTab; label: string; icon: LucideIcon }[] = [
   { id: "explorer", label: "Explorer", icon: FileText },
   { id: "scenario", label: "Scenario", icon: SquarePen },
   { id: "conversation", label: "Conversation", icon: MessageCircle },
 ];
+
+/** ML scenarios splice a "Data Preview" tab in right after Explorer — see
+ *  `showDataPreview` on `ActivityRail`. Script output/metrics/artifacts live in
+ *  the right-side `MlNotebookPreviewPanel` instead of a sidebar tab. */
+const DATA_TAB: { id: PanelTab; label: string; icon: LucideIcon } = {
+  id: "data",
+  label: "Data Preview",
+  icon: Database,
+};
 
 /**
  * The VS Code–style activity bar. Each button selects a left-panel tab; clicking
@@ -22,11 +31,15 @@ export function ActivityRail({
   activeTab,
   panelOpen,
   onSelect,
+  showDataPreview = false,
 }: {
   activeTab: PanelTab;
   panelOpen: boolean;
   onSelect: (tab: PanelTab) => void;
+  /** ML scenarios only (Phase 4) — every other scenario type keeps the original 3 tabs. */
+  showDataPreview?: boolean;
 }) {
+  const tabs = showDataPreview ? [TABS[0]!, DATA_TAB, ...TABS.slice(1)] : TABS;
   return (
     <div
       className="flex w-14 flex-none flex-col items-center gap-1 py-2.5"
@@ -35,7 +48,7 @@ export function ActivityRail({
       aria-orientation="vertical"
       aria-label="Panels"
     >
-      {TABS.map(({ id, label, icon: Icon }) => {
+      {tabs.map(({ id, label, icon: Icon }) => {
         const highlighted = panelOpen && activeTab === id;
         return (
           <button

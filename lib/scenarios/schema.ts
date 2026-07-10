@@ -35,9 +35,21 @@ export const ENGINE_IDS = ["react", "node", "python", "java", "csharp", "sql"] a
 /** Databases a scenario can provision for its engine (Phase 9). */
 export const DATABASE_ENGINES = ["sqlite"] as const;
 export const SCENARIO_VISIBILITIES = ["public", "internal"] as const;
-export const SCENARIO_TYPES = ["frontend", "backend", "fullstack"] as const;
-export const EXECUTION_MODES = ["single", "fullstack"] as const;
-export const VERIFICATION_MODES = ["single-file", "scenario-step", "scenario-final"] as const;
+export const SCENARIO_TYPES = ["frontend", "backend", "fullstack", "machine-learning"] as const;
+export const EXECUTION_MODES = ["single", "fullstack", "python-ml"] as const;
+/** JSON type names `execution.artifacts.metrics.expectedTypes`/`assertions`
+ *  may require — mirrors `MachineLearningMetricTypeName` in
+ *  lib/scenarios/machine-learning-metrics.ts (kept independent here so the
+ *  schema module stays fs/dependency-free; both lists must be changed
+ *  together if ever extended). */
+export const ML_METRIC_TYPE_NAMES = ["number", "string", "boolean", "null", "array", "object"] as const;
+export const VERIFICATION_MODES = [
+  "single-file",
+  "scenario-step",
+  "scenario-final",
+  "python-step",
+  "python-final",
+] as const;
 
 /** Harnesses whose `verify.functionName` is required (per frozen §3 rule 8). */
 const FUNCTION_NAME_HARNESSES = new Set(["node-vm", "python", "component"]);
@@ -136,9 +148,64 @@ export const scenarioSchema = z
         database: z.enum(DATABASE_ENGINES).optional(),
       })
       .optional(),
+    // Machine-learning-specific metadata (Phase 1: contract only, no execution).
+    // `language: python` is already covered by the generalized `runtime` field
+    // (RUNTIMES includes "python"); this block adds the ML-only extras. The
+    // candidate entrypoint is `workspace.entry`, which the invariant below pins
+    // to `main.py` — no separate `entrypoint` field is needed.
+    ml: z
+      .object({
+        pythonVersion: z.string().min(1).optional(),
+      })
+      .optional(),
     execution: z
       .object({
         mode: z.enum(EXECUTION_MODES),
+        // Optional, additive artifact-requirement config (ML scenarios only in
+        // practice today) — existing scenarios omit `artifacts` entirely and are
+        // completely unaffected. See docs/README.md "Machine Learning Scenario
+        // Runtime" for the metrics.json contract this configures.
+        artifacts: z
+          .object({
+            metrics: z
+              .object({
+                /** Workspace-relative path to the metrics file. Defaults to
+                 *  "metrics.json" when omitted. Semantic checks (relative,
+                 *  no traversal) live in authoring/execution.ts, not here. */
+                path: z.string().min(1).optional(),
+                /** When true, missing/malformed metrics.json fails final
+                 *  verification. When false/omitted, metrics.json stays an
+                 *  optional artifact (preview-only). */
+                required: z.boolean().optional(),
+                /** JSON Pointers (RFC 6901, e.g. "/summary/accuracy") that
+                 *  must resolve to some value. Supports arbitrarily nested
+                 *  metrics.json shapes, not just flat top-level keys. */
+                requiredPaths: z.array(z.string().min(1)).optional(),
+                /** Keyed by JSON Pointer — when present, the resolved value's
+                 *  JSON type must match. */
+                expectedTypes: z.record(z.string().min(1), z.enum(ML_METRIC_TYPE_NAMES)).optional(),
+                /** Generic structural checks beyond presence/type — see
+                 *  `MachineLearningMetricAssertion` (lib/scenarios/machine-
+                 *  learning-metrics.ts). Intentionally NOT ML-specific
+                 *  vocabulary (no "accuracyThreshold" etc.) — just bounded
+                 *  JSON structure checks. */
+                assertions: z
+                  .array(
+                    z.object({
+                      path: z.string().min(1),
+                      type: z.enum(ML_METRIC_TYPE_NAMES).optional(),
+                      minimum: z.number().finite().optional(),
+                      maximum: z.number().finite().optional(),
+                      minItems: z.number().int().nonnegative().optional(),
+                      maxItems: z.number().int().nonnegative().optional(),
+                      integer: z.boolean().optional(),
+                    }),
+                  )
+                  .optional(),
+              })
+              .optional(),
+          })
+          .optional(),
       })
       .optional(),
     version: z.number().int().positive(),
@@ -202,6 +269,36 @@ export const scenarioSchema = z
       });
     }
 
+    if (s.type === "machine-learning") {
+      if (s.runtime !== "python") {
+        ctx.addIssue({
+          code: "custom",
+          path: ["runtime"],
+          message: "machine-learning scenarios must declare runtime: python",
+        });
+      }
+      if (s.execution?.mode !== "python-ml") {
+        ctx.addIssue({
+          code: "custom",
+          path: ["execution", "mode"],
+          message: "machine-learning scenarios must declare execution.mode: python-ml",
+        });
+      }
+      if (s.workspace.entry !== "main.py") {
+        ctx.addIssue({
+          code: "custom",
+          path: ["workspace", "entry"],
+          message: "machine-learning scenarios must set workspace.entry: main.py",
+        });
+      }
+    } else if (s.execution?.mode === "python-ml") {
+      ctx.addIssue({
+        code: "custom",
+        path: ["type"],
+        message: "execution.mode: python-ml requires type: machine-learning",
+      });
+    }
+
     // experienceMax >= experienceMin (frozen §6 rule 3).
     if (experienceIndex(s.experienceMax) < experienceIndex(s.experienceMin)) {
       ctx.addIssue({
@@ -231,6 +328,10 @@ export const scenarioSchema = z
     s.steps.forEach((step, i) => {
       const at = (key: string) => ["steps", i, key];
       const fullstackManualStep = s.type === "fullstack" && step.verify.harness === "none";
+      // Machine-learning steps use the same manual/checkpoint-graded escape hatch as
+      // fullstack today, since the Python runtime is not implemented yet (Phase 2).
+      const mlManualStep = s.type === "machine-learning" && step.verify.harness === "none";
+      const manualStep = fullstackManualStep || mlManualStep;
 
       if (step.rubric && sumWeights(step.rubric) !== 100) {
         ctx.addIssue({ code: "custom", path: at("rubric"), message: "step rubric weights must sum to 100" });
@@ -252,16 +353,21 @@ export const scenarioSchema = z
         }
       } else {
         // implement | debug | refactor ⇒ executable harness + tests (frozen §6 rule 8).
-        if (step.verify.harness === "none" && !fullstackManualStep) {
+        if (step.verify.harness === "none" && !manualStep) {
           ctx.addIssue({ code: "custom", path: at("verify"), message: `${step.kind} steps require an executable harness` });
         }
         if (step.verification !== "automated-tests" && step.verification !== "hybrid") {
           ctx.addIssue({ code: "custom", path: at("verification"), message: `${step.kind} steps must use verification automated-tests or hybrid` });
         }
-        if ((!step.verify.tests || step.verify.tests.length === 0) && !fullstackManualStep) {
+        if ((!step.verify.tests || step.verify.tests.length === 0) && !manualStep) {
           ctx.addIssue({ code: "custom", path: at("verify"), message: `${step.kind} steps must declare tests` });
         }
-        if (FUNCTION_NAME_HARNESSES.has(step.verify.harness) && !step.verify.functionName) {
+        // Machine-learning steps are script-based (`python main.py`, `pytest`), not
+        // function-call based, so a "python" harness on an ML step never needs
+        // functionName — this does NOT weaken the requirement for any other
+        // scenario type using the python/node-vm/component harnesses.
+        const mlScriptStep = s.type === "machine-learning" && step.verify.harness === "python";
+        if (FUNCTION_NAME_HARNESSES.has(step.verify.harness) && !step.verify.functionName && !mlScriptStep) {
           ctx.addIssue({ code: "custom", path: at("verify"), message: `harness ${step.verify.harness} requires functionName` });
         }
       }

@@ -3,6 +3,7 @@ import { ensureAuthoringDom } from "@/lib/scenarios/authoring/jsdom-env";
 import { resolveExecutionProfile } from "@/lib/scenarios/execution/profile";
 import { diag, type AuthoredBundle, type Diagnostic } from "@/lib/scenarios/authoring/types";
 import { scenarioTypeOf } from "@/lib/scenarios/scenario-type";
+import { validateMachineLearningSolution, type MlSolutionRunner } from "@/lib/scenarios/authoring/machine-learning-solution";
 import type { ExecutionContext } from "@/lib/scenarios/execution/context";
 import type { SnapshotFile, VerificationResult } from "@/lib/scenarios/verification";
 import type { Scenario } from "@/lib/scenarios/schema";
@@ -59,7 +60,11 @@ function databaseSources(bundle: AuthoredBundle, profile: ReturnType<typeof reso
   return { schema, seed };
 }
 
-export async function validateSolution(bundle: AuthoredBundle, verify: SolutionVerifier): Promise<Diagnostic[]> {
+export async function validateSolution(
+  bundle: AuthoredBundle,
+  verify: SolutionVerifier,
+  mlDependencies?: MlSolutionRunner,
+): Promise<Diagnostic[]> {
   const { scenario } = bundle;
   if (!scenario) return [];
 
@@ -72,6 +77,25 @@ export async function validateSolution(bundle: AuthoredBundle, verify: SolutionV
         "Run `npm run scenario:test:fullstack -- <slug>` to validate backend, frontend, and integration test layers.",
       ),
     ];
+  }
+
+  // Machine-learning checkpoints are CUMULATIVE (step N's tests also include
+  // every previous step's tests when `includePreviousSteps: true`), which the
+  // generic single-step `ExecutionPlatform` below cannot express. Route
+  // through the same real pytest-based engine production interviews use
+  // instead (`lib/scenarios/authoring/machine-learning-solution.ts`).
+  if (scenarioTypeOf(scenario) === "machine-learning") {
+    if (!mlDependencies) {
+      return [
+        diag.suggestion(
+          "solution/ml-runner-unavailable",
+          "scenario.md → steps",
+          "No Python pytest runner was injected for this validation run.",
+          "Pass ML dependencies to `validateSolution` (the CLI/test composition root does this automatically when `runSolution` is set).",
+        ),
+      ];
+    }
+    return validateMachineLearningSolution(bundle, mlDependencies);
   }
 
   const out: Diagnostic[] = [];

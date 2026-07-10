@@ -48,6 +48,10 @@ export function validateSteps(bundle: AuthoredBundle): Diagnostic[] {
   steps.forEach((step, i) => {
     const at = `scenario.md → steps[${i}] (${step.id})`;
     const fullstackManualStep = scenario.type === "fullstack" && step.verify.harness === "none";
+    // Machine-learning steps use the same manual/checkpoint-graded escape hatch as
+    // fullstack today, since the Python runtime is not implemented yet (Phase 2).
+    const mlManualStep = scenario.type === "machine-learning" && step.verify.harness === "none";
+    const manualStep = fullstackManualStep || mlManualStep;
 
     if (!KEBAB.test(step.id)) {
       out.push(
@@ -56,7 +60,7 @@ export function validateSteps(bundle: AuthoredBundle): Diagnostic[] {
     }
 
     // Verification steps must declare tests that exist.
-    const needsTests = (step.verification === "automated-tests" || step.verification === "hybrid") && !fullstackManualStep;
+    const needsTests = (step.verification === "automated-tests" || step.verification === "hybrid") && !manualStep;
     if (needsTests) {
       const tests = step.verify.tests ?? [];
       if (tests.length === 0) {

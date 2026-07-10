@@ -6,7 +6,7 @@ import {
 } from "@/lib/scenarios/fullstack-step-verification";
 import type { FullstackAuthoredTestFile } from "@/lib/scenarios/fullstack-test-runner";
 import type { FullstackRuntimeHandle } from "@/lib/scenarios/fullstack-runtime";
-import type { LoadedScenario } from "@/lib/scenarios/types";
+import type { CheckpointFile, LoadedScenario, ServedWorkspaceFile } from "@/lib/scenarios/types";
 
 function loaded(): LoadedScenario {
   return {
@@ -46,8 +46,8 @@ function loaded(): LoadedScenario {
     },
     sections: {},
     files: [
-      { path: "backend/src/app.ts", role: "edit", content: "" },
-      { path: "frontend/src/App.tsx", role: "edit", content: "" },
+      { path: "backend/src/app.ts", role: "edit", content: "starter-backend" },
+      { path: "frontend/src/App.tsx", role: "edit", content: "starter-frontend" },
     ],
     entry: "frontend/src/App.tsx",
   } as LoadedScenario;
@@ -78,6 +78,37 @@ function runtime(stopped: string[]): FullstackRuntimeHandle {
   };
 }
 
+const STEP_SOLUTIONS: Record<string, CheckpointFile[]> = {
+  "step-1": [
+    { path: "backend/src/app.ts", content: "step-1-backend" },
+    { path: "frontend/src/App.tsx", content: "step-1-frontend" },
+  ],
+  "step-2": [
+    { path: "backend/src/app.ts", content: "step-2-backend" },
+    { path: "frontend/src/App.tsx", content: "step-2-frontend" },
+  ],
+  "step-3": [
+    { path: "backend/src/app.ts", content: "step-3-backend" },
+    { path: "frontend/src/App.tsx", content: "step-3-frontend" },
+  ],
+};
+
+function filesForStep(stepId: string): CheckpointFile[] {
+  return STEP_SOLUTIONS[stepId] ?? [];
+}
+
+function candidateFilesForStep(stepId: string): ServedWorkspaceFile[] {
+  const files = new Map(loaded().files.map((file) => [file.path, { ...file }]));
+  for (const checkpointFile of filesForStep(stepId)) {
+    const existing = files.get(checkpointFile.path);
+    if (existing) {
+      existing.content = checkpointFile.content;
+      files.set(checkpointFile.path, existing);
+    }
+  }
+  return [...files.values()];
+}
+
 function deps() {
   const stopped: string[] = [];
   const resets: string[] = [];
@@ -87,6 +118,7 @@ function deps() {
     resetRuntime: vi.fn(async () => {
       resets.push("reset");
     }),
+    resolveCheckpointFiles: vi.fn(async (_slug, stepId) => filesForStep(stepId)),
     runTestFile: vi.fn(async ({ layer, testFile }) => {
       calls.push(testFile.path);
       return {
@@ -124,17 +156,29 @@ describe("selectStepScopedTestFiles", () => {
 });
 
 describe("verifyFullstackScenarioStep", () => {
-  it("skips missing frontend tests without failing the whole verification", async () => {
+  it("fails when the workspace still matches the starter files instead of the checkpoint solution", async () => {
+    const { dependencies } = deps();
+    const result = await verifyFullstackScenarioStep(loaded(), tests, dependencies, { stepIndex: 0 });
+
+    expect(result.passed).toBe(false);
+    expect(result.groups?.find((group) => group.name === "workspace")).toMatchObject({
+      ok: false,
+      reason: expect.stringContaining("Workspace does not match the authored checkpoint solution"),
+    });
+  });
+
+  it("skips missing frontend tests without failing the whole verification when the checkpoint matches", async () => {
     const { dependencies } = deps();
     const result = await verifyFullstackScenarioStep(
       loaded(),
       tests.filter((file) => !file.path.startsWith("tests/frontend/")),
       dependencies,
-      { stepIndex: 0 },
+      { stepIndex: 0, files: candidateFilesForStep("step-1") },
     );
 
     expect(result.passed).toBe(true);
     expect(result.groups?.map((group) => [group.name, group.ok, group.skipped])).toEqual([
+      ["workspace", true, undefined],
       ["backend", true, undefined],
       ["frontend", true, true],
       ["integration", true, undefined],
@@ -147,7 +191,7 @@ describe("verifyFullstackScenarioStep", () => {
       loaded(),
       tests.filter((file) => !file.path.startsWith("tests/integration/")),
       dependencies,
-      { stepIndex: 1 },
+      { stepIndex: 1, files: candidateFilesForStep("step-2") },
     );
 
     expect(result.passed).toBe(false);
@@ -170,7 +214,10 @@ describe("verifyFullstackScenarioStep", () => {
       };
     });
 
-    const result = await verifyFullstackScenarioStep(loaded(), tests, dependencies, { stepIndex: 1 });
+    const result = await verifyFullstackScenarioStep(loaded(), tests, dependencies, {
+      stepIndex: 1,
+      files: candidateFilesForStep("step-2"),
+    });
 
     expect(result.passed).toBe(false);
     expect(calls).toEqual([
@@ -181,7 +228,12 @@ describe("verifyFullstackScenarioStep", () => {
       "tests/integration/step-1.spec.ts",
       "tests/integration/step-2.spec.ts",
     ]);
+    expect(dependencies.startRuntime).toHaveBeenCalledTimes(2);
+    expect(vi.mocked(dependencies.startRuntime).mock.calls.map(([, options]) => options.targets)).toEqual([
+      { backend: false, frontend: false },
+      { backend: true, frontend: true },
+    ]);
     expect(resets).toHaveLength(4);
-    expect(stopped).toEqual(["stopped"]);
+    expect(stopped).toEqual(["stopped", "stopped"]);
   });
 });

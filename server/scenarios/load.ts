@@ -9,6 +9,7 @@ import { API_PREVIEW_METHODS, type ApiPreviewConfig, type ApiPreviewExample } fr
 import { isPublicScenario } from "@/lib/scenarios/visibility";
 import { scenarioTypeOf } from "@/lib/scenarios/scenario-type";
 import type { LoadedScenario, ScenarioOption, ScenarioSummary, ServedWorkspaceFile } from "@/lib/scenarios/types";
+import { logPerf, timePerf } from "@/server/scenarios/perf";
 
 export type { LoadedScenario, ScenarioOption, ScenarioSummary, ServedWorkspaceFile } from "@/lib/scenarios/types";
 
@@ -72,6 +73,24 @@ interface ScenarioLocation {
   dir: string;
 }
 
+interface ScenarioFrontmatterEntry {
+  loc: ScenarioLocation;
+  scenario: Scenario;
+}
+
+const SCENARIO_CACHE_TTL_MS = process.env.NODE_ENV === "development" ? 2_000 : 30_000;
+let locationsCache: { expiresAt: number; value: ScenarioLocation[] } | null = null;
+let frontmatterCache: { expiresAt: number; value: ScenarioFrontmatterEntry[] } | null = null;
+const loadedScenarioCache = new Map<string, { expiresAt: number; value: LoadedScenario }>();
+
+function cacheActive<T>(cache: { expiresAt: number; value: T } | null): cache is { expiresAt: number; value: T } {
+  return Boolean(cache && cache.expiresAt > Date.now());
+}
+
+function cacheExpiresAt(): number {
+  return Date.now() + SCENARIO_CACHE_TTL_MS;
+}
+
 /** Absolute directory of a scenario by slug, or null if unknown. */
 export function findScenarioDir(slug: string): string | null {
   return findScenarioLocations().find((l) => l.slug === slug)?.dir ?? null;
@@ -79,8 +98,10 @@ export function findScenarioDir(slug: string): string | null {
 
 /** Enumerate every `<category>/<slug>/scenario.md` on disk. */
 export function findScenarioLocations(): ScenarioLocation[] {
+  if (cacheActive(locationsCache)) return locationsCache.value;
   if (!existsSync(CONTENT_ROOT)) return [];
-  const locations: ScenarioLocation[] = [];
+  const startedAt = Date.now();
+  const next: ScenarioLocation[] = [];
   for (const category of readdirSync(CONTENT_ROOT, { withFileTypes: true })) {
     if (!category.isDirectory()) continue;
     const categoryDir = join(CONTENT_ROOT, category.name);
@@ -88,11 +109,35 @@ export function findScenarioLocations(): ScenarioLocation[] {
       if (!slug.isDirectory()) continue;
       const dir = join(categoryDir, slug.name);
       if (existsSync(join(dir, "scenario.md"))) {
-        locations.push({ slug: slug.name, category: category.name, dir });
+        next.push({ slug: slug.name, category: category.name, dir });
       }
     }
   }
-  return locations;
+  logPerf("scenario.findLocations", Date.now() - startedAt, { count: next.length });
+  locationsCache = { expiresAt: cacheExpiresAt(), value: next };
+  return next;
+}
+
+function readScenarioFrontmatterEntries(): ScenarioFrontmatterEntry[] {
+  if (cacheActive(frontmatterCache)) return frontmatterCache.value;
+
+  const entries = findScenarioLocations().flatMap((loc) => {
+    try {
+      const raw = readFileSync(join(loc.dir, "scenario.md"), "utf8");
+      const { scenario } = parseScenario(raw);
+      return [{ loc, scenario }];
+    } catch (e) {
+      console.warn(`Skipping invalid scenario '${loc.slug}': ${(e as Error).message}`);
+      return [];
+    }
+  });
+
+  frontmatterCache = { expiresAt: cacheExpiresAt(), value: entries };
+  return entries;
+}
+
+export function listScenarioFrontmatterEntries(): ScenarioFrontmatterEntry[] {
+  return readScenarioFrontmatterEntries();
 }
 
 /**
@@ -100,11 +145,9 @@ export function findScenarioLocations(): ScenarioLocation[] {
  * skipped with a warning rather than breaking discovery for the valid ones.
  */
 export async function listScenarios(): Promise<ScenarioSummary[]> {
-  const summaries: ScenarioSummary[] = [];
-  for (const loc of findScenarioLocations()) {
-    try {
-      const raw = readFileSync(join(loc.dir, "scenario.md"), "utf8");
-      const { scenario } = parseScenario(raw);
+  return timePerf("scenario.listScenarios", async () => {
+    const summaries: ScenarioSummary[] = [];
+    for (const { loc, scenario } of readScenarioFrontmatterEntries()) {
       if (!isPublicScenario(scenario)) continue;
       summaries.push({
         slug: loc.slug,
@@ -115,11 +158,9 @@ export async function listScenarios(): Promise<ScenarioSummary[]> {
         difficulty: scenario.difficulty,
         status: scenario.status,
       });
-    } catch (e) {
-      console.warn(`Skipping invalid scenario '${loc.slug}': ${(e as Error).message}`);
     }
-  }
-  return summaries.sort((a, b) => a.title.localeCompare(b.title));
+    return summaries.sort((a, b) => a.title.localeCompare(b.title));
+  });
 }
 
 /**
@@ -130,11 +171,9 @@ export async function listScenarios(): Promise<ScenarioSummary[]> {
  */
 export async function listScenarioOptions(): Promise<ScenarioOption[]> {
   const order: Record<string, number> = { easy: 0, medium: 1, hard: 2 };
-  const options: ScenarioOption[] = [];
-  for (const loc of findScenarioLocations()) {
-    try {
-      const raw = readFileSync(join(loc.dir, "scenario.md"), "utf8");
-      const { scenario } = parseScenario(raw);
+  return timePerf("scenario.listOptions", async () => {
+    const options: ScenarioOption[] = [];
+    for (const { loc, scenario } of readScenarioFrontmatterEntries()) {
       if (!isPublicScenario(scenario)) continue;
       options.push({
         slug: loc.slug,
@@ -151,13 +190,11 @@ export async function listScenarioOptions(): Promise<ScenarioOption[]> {
         estimatedMinutes: scenario.estimatedMinutes,
         status: scenario.status,
       });
-    } catch (e) {
-      console.warn(`Skipping invalid scenario '${loc.slug}': ${(e as Error).message}`);
     }
-  }
-  return options.sort(
-    (a, b) => (order[a.difficulty] ?? 9) - (order[b.difficulty] ?? 9) || a.title.localeCompare(b.title),
-  );
+    return options.sort(
+      (a, b) => (order[a.difficulty] ?? 9) - (order[b.difficulty] ?? 9) || a.title.localeCompare(b.title),
+    );
+  });
 }
 
 /**
@@ -351,38 +388,44 @@ export async function loadScenario(slug: string, options: LoadOptions = {}): Pro
     throw new Error(`scenario not found: '${slug}'`);
   }
 
-  const raw = readFileSync(join(loc.dir, "scenario.md"), "utf8");
-  const { scenario: parsed, sections } = parseScenario(raw);
-  const scenario = includeAuthorOnly ? parsed : stripAuthorOnly(parsed);
-
-  // Sanity: folder slug must match frontmatter id (frozen §1, immutable).
-  if (scenario.id !== loc.slug) {
-    throw new Error(`scenario id '${scenario.id}' does not match its folder '${loc.slug}'`);
-  }
-
-  const files: ServedWorkspaceFile[] = scenario.workspace.files.map((file) => {
-    const abs = join(loc.dir, "workspace", file.path);
-    if (!existsSync(abs)) {
-      throw new Error(`workspace file declared but missing on disk: workspace/${file.path}`);
+  return timePerf("scenario.load", async () => {
+    const cacheKey = `${slug}:${includeAuthorOnly ? "author" : "candidate"}`;
+    const cached = loadedScenarioCache.get(cacheKey);
+    if (cached && cacheActive(cached)) {
+      return cached.value;
     }
-    return { path: file.path, role: file.role, content: readFileSync(abs, "utf8") };
-  });
 
-  // Strip authored-only body sections before serving.
-  const servedSections: Record<string, string> = {};
-  for (const [heading, text] of Object.entries(sections)) {
-    if (!AUTHORED_SECTIONS.has(heading)) servedSections[heading] = text;
-  }
+    const raw = readFileSync(join(loc.dir, "scenario.md"), "utf8");
+    const { scenario: parsed, sections } = parseScenario(raw);
+    const scenario = includeAuthorOnly ? parsed : stripAuthorOnly(parsed);
 
-  // Freeze the whole authored model so runtime session state (Phase 2+) can never
-  // mutate it — edits live only in per-session buffers copied from `files`.
-  return deepFreeze({
-    slug: loc.slug,
-    category: loc.category,
-    scenario,
-    sections: servedSections,
-    files,
-    entry: scenario.workspace.entry,
-    preview: loadPreviewBundle(loc.dir),
-  });
+    if (scenario.id !== loc.slug) {
+      throw new Error(`scenario id '${scenario.id}' does not match its folder '${loc.slug}'`);
+    }
+
+    const files: ServedWorkspaceFile[] = scenario.workspace.files.map((file) => {
+      const abs = join(loc.dir, "workspace", file.path);
+      if (!existsSync(abs)) {
+        throw new Error(`workspace file declared but missing on disk: workspace/${file.path}`);
+      }
+      return { path: file.path, role: file.role, content: readFileSync(abs, "utf8") };
+    });
+
+    const servedSections: Record<string, string> = {};
+    for (const [heading, text] of Object.entries(sections)) {
+      if (!AUTHORED_SECTIONS.has(heading)) servedSections[heading] = text;
+    }
+
+    const loaded = deepFreeze({
+      slug: loc.slug,
+      category: loc.category,
+      scenario,
+      sections: servedSections,
+      files,
+      entry: scenario.workspace.entry,
+      preview: loadPreviewBundle(loc.dir),
+    });
+    loadedScenarioCache.set(cacheKey, { expiresAt: cacheExpiresAt(), value: loaded });
+    return loaded;
+  }, { slug, includeAuthorOnly });
 }

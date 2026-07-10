@@ -1,0 +1,13 @@
+# Pinned, allowlisted ML runner dependencies — the ONLY packages candidate
+# code can import. Installed at IMAGE BUILD time only; the runtime never
+# runs pip/conda/etc against candidate-controlled files (requirements.txt,
+# pyproject.toml, shell commands, notebook cells, workspace metadata).
+#
+# Update this file + rebuild the image (`npm run sandbox:build`) to change
+# what's available to candidate scripts. Bump ML_SANDBOX_IMAGE_TAG in
+# server/scenarios/sandbox/image.ts when you do, so callers can tell a stale
+# local image from a rebuilt one.
+pytest==8.3.3
+numpy==1.26.4
+pandas==2.2.2
+scikit-learn==1.4.2

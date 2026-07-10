@@ -1,0 +1,41 @@
+import express from "express";
+import { listAppointmentsWithDetails, listServices, listStaff, resetDatabase } from "./db";
+
+const app = express();
+
+app.use(express.json());
+app.use((req, res, next) => {
+  res.setHeader("Access-Control-Allow-Origin", "*");
+  res.setHeader("Access-Control-Allow-Headers", "Content-Type");
+  res.setHeader("Access-Control-Allow-Methods", "GET,POST,PATCH,OPTIONS");
+  if (req.method === "OPTIONS") {
+    res.sendStatus(204);
+    return;
+  }
+  next();
+});
+
+app.get("/health", (_req, res) => {
+  res.json({ ok: true });
+});
+
+app.post("/__test/reset", async (_req, res) => {
+  if (process.env.NODE_ENV !== "test") {
+    res.status(404).json({ error: "Not found" });
+    return;
+  }
+  await resetDatabase();
+  res.json({ ok: true });
+});
+
+app.get("/appointments", async (_req, res) => {
+  const appointments = await listAppointmentsWithDetails();
+  res.json({ appointments });
+});
+
+app.get("/booking-options", async (_req, res) => {
+  const [services, staff] = await Promise.all([listServices({ activeOnly: true }), listStaff({ activeOnly: true })]);
+  res.json({ services, staff });
+});
+
+export default app;

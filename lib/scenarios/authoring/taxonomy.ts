@@ -40,6 +40,7 @@ export const KNOWN_CATEGORIES: readonly string[] = [
   "fullstack-react-node",
   "algorithms",
   "systems",
+  "machine-learning-python",
 ];
 
 /**

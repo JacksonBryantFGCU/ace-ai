@@ -24,7 +24,7 @@ import type { VerificationResult } from "@/lib/scenarios/verification";
 /** Verification wiring passed down from the shell (which owns coordination). */
 export interface VerificationPanelProps {
   supported: boolean;
-  mode: "single-file" | "scenario-step";
+  mode: "single-file" | "scenario-step" | "python-step";
   running: boolean;
   result: VerificationResult | null;
   onRun: () => void;
@@ -39,6 +39,15 @@ export interface CheckpointPanelProps {
   available: boolean;
   applied: boolean;
   onUse: () => void;
+}
+
+/** Final-submission validation wiring (Phase 4, ML only for now) — shown on the
+ *  final step in addition to (not instead of) per-step verification. */
+export interface FinalCheckPanelProps {
+  visible: boolean;
+  running: boolean;
+  result: VerificationResult | null;
+  onRun: () => void;
 }
 
 const SECTION_LABEL = "text-[11px] font-semibold uppercase tracking-[0.13em]";
@@ -63,12 +72,14 @@ export function ScenarioTab({
   controller,
   verification,
   checkpoint,
+  finalCheck,
 }: {
   steps: ScenarioStep[];
   machine: InterviewMachineApi;
   controller: InterviewController;
   verification: VerificationPanelProps;
   checkpoint: CheckpointPanelProps;
+  finalCheck?: FinalCheckPanelProps;
 }) {
   const { state, current, lastStep, complete } = machine;
   const index = state.stepIndex;
@@ -219,7 +230,7 @@ export function ScenarioTab({
                 <span className={`${SECTION_LABEL} mb-[9px] block`} style={{ color: shell.textFaint }}>
                   Result
                 </span>
-                {verification.mode === "scenario-step" ? (
+                {verification.mode === "scenario-step" || verification.mode === "python-step" ? (
                   <p className="mb-2 text-xs" style={{ color: shell.textFainter }}>
                     {verification.result.status === "passed"
                       ? "Step checks passed."
@@ -229,6 +240,37 @@ export function ScenarioTab({
                   </p>
                 ) : null}
                 <VerificationResultCard result={verification.result} />
+              </div>
+            ) : null}
+
+            {/* Final validation — last step only, ML scenarios for now */}
+            {finalCheck?.visible && lastStep ? (
+              <div>
+                <span className={`${SECTION_LABEL} mb-[9px] block`} style={{ color: shell.textFaint }}>
+                  Final validation
+                </span>
+                <button
+                  type="button"
+                  onClick={finalCheck.onRun}
+                  disabled={finalCheck.running}
+                  className="mb-2 flex w-full items-center justify-center gap-2 rounded-[9px] p-[9px] text-[13px] font-semibold text-white transition-colors hover:brightness-110 focus-visible:ring-2 focus-visible:ring-blue-400/60 focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-60"
+                  style={{ background: shell.nextBg }}
+                >
+                  {finalCheck.running ? <Loader2 className="size-[15px] animate-spin" /> : <Play className="size-[15px] fill-current" />}
+                  {finalCheck.running ? "Running final Python checks..." : "Run final checks"}
+                </button>
+                {finalCheck.result ? (
+                  <>
+                    <p className="mb-2 text-xs" style={{ color: shell.textFainter }}>
+                      {finalCheck.result.status === "passed"
+                        ? "Final checks passed."
+                        : finalCheck.result.status === "failed" || finalCheck.result.status === "errored"
+                          ? "Final checks failed."
+                          : finalCheck.result.message}
+                    </p>
+                    <VerificationResultCard result={finalCheck.result} />
+                  </>
+                ) : null}
               </div>
             ) : null}
           </div>

@@ -70,6 +70,19 @@ const catalog = [
     tags: ["drag-drop"],
     framework: "react",
   }),
+  scenario({
+    slug: "churn-model-baseline",
+    title: "Churn Model Baseline",
+    summary: "Train and evaluate a baseline churn classifier",
+    category: "machine-learning-python",
+    type: "machine-learning",
+    difficulty: "medium",
+    jobRoles: ["machine-learning"],
+    skills: ["pandas", "scikit-learn"],
+    tags: ["framework:scikit-learn"],
+    runtime: "python",
+    framework: "scikit-learn",
+  }),
 ];
 
 describe("scenario catalog filtering", () => {
@@ -106,12 +119,32 @@ describe("scenario catalog filtering", () => {
     ]);
   });
 
+  it("allowedRole is a hard boundary for the machine-learning track (no leakage either direction)", () => {
+    expect(filterCatalogScenarios(catalog, { allowedRole: "machine-learning" }).map((s) => s.slug)).toEqual([
+      "churn-model-baseline",
+    ]);
+    expect(filterCatalogScenarios(catalog, { allowedRole: "backend" }).map((s) => s.slug)).not.toContain(
+      "churn-model-baseline",
+    );
+    expect(filterCatalogScenarios(catalog, { allowedRole: "fullstack" }).map((s) => s.slug)).not.toContain(
+      "churn-model-baseline",
+    );
+  });
+
+  it("difficulty filter works with ML scenario fixtures", () => {
+    expect(filterCatalogScenarios(catalog, { allowedRole: "machine-learning", difficulty: "medium" }).map((s) => s.slug)).toEqual([
+      "churn-model-baseline",
+    ]);
+    expect(filterCatalogScenarios(catalog, { allowedRole: "machine-learning", difficulty: "hard" }).map((s) => s.slug)).toEqual([]);
+  });
+
   it("groups by role family and sorts within each group by difficulty", () => {
     const groups = groupCatalogScenarios(catalog);
     expect(groups.map((group) => [group.label, group.scenarios.map((s) => s.slug)])).toEqual([
       ["Frontend", ["todo-list", "kanban-board"]],
       ["Backend", ["notes-rest-api"]],
       ["Full-Stack", ["fullstack-dashboard"]],
+      ["Machine Learning", ["churn-model-baseline"]],
     ]);
   });
 

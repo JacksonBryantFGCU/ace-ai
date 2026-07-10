@@ -124,19 +124,6 @@ async function runLayerCommand(input: {
   };
 }
 
-async function withPreparedRuntime<T>(
-  slug: string,
-  fn: (runtime: FullstackRuntimeHandle) => Promise<T>,
-): Promise<T> {
-  const loaded = await loadScenario(slug, { includeAuthorOnly: false });
-  const runtime = await startFullstackRuntime(loaded, { purpose: "verification" });
-  try {
-    return await fn(runtime);
-  } finally {
-    await runtime.stop();
-  }
-}
-
 export async function runFullstackScenarioTests(options: {
   slug: string;
   layers?: readonly FullstackTestLayer[];
@@ -148,28 +135,22 @@ export async function runFullstackScenarioTests(options: {
 
   return runFullstackScenarioTestsCore(loaded, authoredTests, {
     async startRuntime(runtimeLoaded, runtimeOptions) {
-      return startFullstackRuntime(runtimeLoaded, runtimeOptions);
+      return startFullstackRuntime(runtimeLoaded, { ...runtimeOptions, purpose: "verification" });
     },
     async runLayer(input) {
-      if (input.layer === "integration") {
-        return runLayerCommand({
-          layer: input.layer,
-          testFiles: input.testFiles,
-          runtime: input.runtime,
-        });
-      }
-
-      return withPreparedRuntime(input.loaded.slug, async (runtime) => {
-        const result = await runLayerCommand({
-          layer: input.layer,
-          testFiles: input.testFiles,
-          runtime,
-        });
-        return {
-          ...result,
-          stdout: result.stdout ? `[${relative(process.cwd(), runtime.workspace.root)}]\n${result.stdout}` : result.stdout,
-        };
+      const result = await runLayerCommand({
+        layer: input.layer,
+        testFiles: input.testFiles,
+        runtime: input.runtime,
       });
+      return input.runtime
+        ? {
+            ...result,
+            stdout: result.stdout
+              ? `[${relative(process.cwd(), input.runtime.workspace.root)}]\n${result.stdout}`
+              : result.stdout,
+          }
+        : result;
     },
   }, { layers: options.layers });
 }

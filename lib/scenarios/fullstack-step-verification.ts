@@ -4,13 +4,23 @@ import {
   type FullstackLayerResult,
   type FullstackTestLayer,
 } from "@/lib/scenarios/fullstack-test-runner";
-import { isFullstackRuntimeScenario, type FullstackRuntimeHandle } from "@/lib/scenarios/fullstack-runtime";
+import {
+  isFullstackRuntimeScenario,
+  type FullstackRuntimeHandle,
+  type FullstackRuntimeTargets,
+} from "@/lib/scenarios/fullstack-runtime";
+import { applyCheckpoint } from "@/lib/scenarios/session";
+import type {
+  CheckpointFile,
+  LoadedScenario,
+  ServedWorkspaceFile,
+  SessionFile,
+} from "@/lib/scenarios/types";
 import type {
   VerificationGroupName,
   VerificationGroupResult,
   VerificationResult,
 } from "@/lib/scenarios/verification";
-import type { LoadedScenario, ServedWorkspaceFile, SessionFile } from "@/lib/scenarios/types";
 
 const STEP_TEST_RE =
   /^tests\/(backend|frontend|integration)\/step-(\d+)\.(?:test|spec)\.[cm]?[jt]sx?$/i;
@@ -18,9 +28,10 @@ const STEP_TEST_RE =
 export interface FullstackStepVerificationDependencies {
   startRuntime(
     loaded: LoadedScenario,
-    options: { files: readonly (ServedWorkspaceFile | SessionFile)[] },
+    options: { files: readonly (ServedWorkspaceFile | SessionFile)[]; targets?: FullstackRuntimeTargets },
   ): Promise<FullstackRuntimeHandle>;
   resetRuntime?(runtime: FullstackRuntimeHandle): Promise<void>;
+  resolveCheckpointFiles(scenarioSlug: string, stepId: string): Promise<CheckpointFile[]>;
   runTestFile(input: {
     layer: FullstackTestLayer;
     testFile: FullstackAuthoredTestFile;
@@ -119,6 +130,80 @@ function skippedGroup(name: VerificationGroupName, reason: string): Verification
   };
 }
 
+function runtimeTargetsForLayer(layer: FullstackTestLayer): FullstackRuntimeTargets {
+  if (layer === "backend") return { backend: false, frontend: false };
+  if (layer === "frontend") return { backend: true, frontend: false };
+  return { backend: true, frontend: true };
+}
+
+function fileSignature(file: { path: string; content: string; role: string }): string {
+  return `${file.path}\u0000${file.role}\u0000${file.content}`;
+}
+
+function compareWorkspaceFiles(
+  actual: readonly (ServedWorkspaceFile | SessionFile)[],
+  expected: readonly (ServedWorkspaceFile | SessionFile)[],
+): { ok: true } | { ok: false; reason: string } {
+  const actualByPath = new Map(actual.map((file) => [file.path, file]));
+  const expectedByPath = new Map(expected.map((file) => [file.path, file]));
+  const missing: string[] = [];
+  const unexpected: string[] = [];
+  const mismatched: string[] = [];
+
+  for (const [path, expectedFile] of expectedByPath) {
+    const actualFile = actualByPath.get(path);
+    if (!actualFile) {
+      missing.push(path);
+      continue;
+    }
+    if (fileSignature(actualFile) !== fileSignature(expectedFile)) {
+      mismatched.push(path);
+    }
+  }
+
+  for (const path of actualByPath.keys()) {
+    if (!expectedByPath.has(path)) unexpected.push(path);
+  }
+
+  if (missing.length === 0 && unexpected.length === 0 && mismatched.length === 0) {
+    return { ok: true };
+  }
+
+  const details = [
+    missing.length ? `missing: ${missing.join(", ")}` : null,
+    mismatched.length ? `changed: ${mismatched.join(", ")}` : null,
+    unexpected.length ? `unexpected: ${unexpected.join(", ")}` : null,
+  ].filter((value): value is string => Boolean(value));
+
+  return {
+    ok: false,
+    reason: `Workspace does not match the authored checkpoint solution (${details.join("; ")}).`,
+  };
+}
+
+async function buildExpectedWorkspace(
+  loaded: LoadedScenario,
+  deps: FullstackStepVerificationDependencies,
+  stepIndex: number,
+  includePreviousSteps: boolean,
+): Promise<readonly (ServedWorkspaceFile | SessionFile)[]> {
+  const startIndex = includePreviousSteps ? 0 : stepIndex;
+  const checkpointFiles: CheckpointFile[] = [];
+
+  for (let i = startIndex; i <= stepIndex; i += 1) {
+    const step = loaded.scenario.steps[i];
+    if (!step) continue;
+    const files = await deps.resolveCheckpointFiles(loaded.slug, step.id);
+    checkpointFiles.push(...files);
+  }
+
+  if (checkpointFiles.length === 0) {
+    return [];
+  }
+
+  return applyCheckpoint(loaded.files, loaded.entry, checkpointFiles).files;
+}
+
 export async function verifyFullstackScenarioStep(
   loaded: LoadedScenario,
   authoredTests: readonly FullstackAuthoredTestFile[],
@@ -139,10 +224,55 @@ export async function verifyFullstackScenarioStep(
   );
 
   const startedAt = Date.now();
-  const runtime = await deps.startRuntime(loaded, { files });
-  try {
-    const groups: VerificationGroupResult[] = [];
+  const groups: VerificationGroupResult[] = [];
+  const integrationTests = selected.get("integration") ?? [];
+  let sharedRuntime: FullstackRuntimeHandle | null = null;
 
+  const expectedWorkspace = await buildExpectedWorkspace(loaded, deps, options.stepIndex, includePreviousSteps);
+  if (expectedWorkspace.length > 0) {
+    const workspaceCheck = compareWorkspaceFiles(files, expectedWorkspace);
+    const workspaceGroup = workspaceCheck.ok
+      ? {
+          name: "workspace" as const,
+          ok: true,
+          durationMs: 0,
+          reason: `Workspace matches the authored checkpoint solution for step ${options.stepIndex + 1}.`,
+        }
+      : missingGroup("workspace", workspaceCheck.reason);
+
+    if (!workspaceGroup.ok) {
+      const failureGroups: VerificationGroupResult[] = [
+        workspaceGroup,
+        skippedGroup("backend", "Skipped because the workspace did not match the authored checkpoint solution."),
+        skippedGroup("frontend", "Skipped because the workspace did not match the authored checkpoint solution."),
+        skippedGroup("integration", "Skipped because the workspace did not match the authored checkpoint solution."),
+      ];
+
+      return {
+        engine: "fullstack",
+        mode: "scenario-step",
+        scenarioSlug: loaded.slug,
+        stepIndex: options.stepIndex,
+        status: "failed",
+        passed: false,
+        message: "Step checks failed.",
+        durationMs: Date.now() - startedAt,
+        finishedAt: Date.now(),
+        errors: [{ message: workspaceGroup.reason ?? "Workspace checkpoint verification failed.", kind: "workspace" }],
+        groups: failureGroups,
+        testResults: failureGroups.map((group) => ({
+          name: group.name,
+          status: group.skipped ? "skipped" : group.ok ? "passed" : "failed",
+          message: group.reason,
+          durationMs: group.durationMs,
+        })),
+      };
+    }
+
+    groups.push(workspaceGroup);
+  }
+
+  try {
     for (const layer of FULLSTACK_TEST_LAYERS) {
       const testFiles = selected.get(layer) ?? [];
       if (testFiles.length === 0) {
@@ -154,37 +284,55 @@ export async function verifyFullstackScenarioStep(
         continue;
       }
 
+      let runtime: FullstackRuntimeHandle;
+      let ownsRuntime = false;
+      if (layer === "frontend" && integrationTests.length > 0) {
+        sharedRuntime ??= await deps.startRuntime(loaded, { files, targets: { backend: true, frontend: true } });
+        runtime = sharedRuntime;
+      } else if (layer === "integration" && sharedRuntime) {
+        runtime = sharedRuntime;
+      } else {
+        runtime = await deps.startRuntime(loaded, { files, targets: runtimeTargetsForLayer(layer) });
+        ownsRuntime = true;
+      }
+
       const results: FullstackLayerResult[] = [];
-      for (const testFile of testFiles) {
-        if (layer !== "backend" && deps.resetRuntime) {
-          await deps.resetRuntime(runtime);
+      try {
+        for (const testFile of testFiles) {
+          if (layer !== "backend" && deps.resetRuntime) {
+            await deps.resetRuntime(runtime);
+          }
+          results.push(await deps.runTestFile({ layer, testFile, loaded, files, runtime }));
         }
-        results.push(await deps.runTestFile({ layer, testFile, loaded, files, runtime }));
+      } finally {
+        if (ownsRuntime) {
+          await runtime.stop();
+        }
       }
       groups.push(aggregateGroup(layer, results));
     }
-
-    const passed = groups.every((group) => group.ok || group.skipped);
-    return {
-      engine: "fullstack",
-      mode: "scenario-step",
-      scenarioSlug: loaded.slug,
-      stepIndex: options.stepIndex,
-      status: passed ? "passed" : "failed",
-      passed,
-      message: passed ? "Step checks passed." : "Step checks failed.",
-      durationMs: Date.now() - startedAt,
-      finishedAt: Date.now(),
-      errors: [],
-      groups,
-      testResults: groups.map((group) => ({
-        name: group.name,
-        status: group.skipped ? "skipped" : group.ok ? "passed" : "failed",
-        message: group.reason,
-        durationMs: group.durationMs,
-      })),
-    };
   } finally {
-    await runtime.stop();
+    await sharedRuntime?.stop();
   }
+
+  const passed = groups.every((group) => group.ok || group.skipped);
+  return {
+    engine: "fullstack",
+    mode: "scenario-step",
+    scenarioSlug: loaded.slug,
+    stepIndex: options.stepIndex,
+    status: passed ? "passed" : "failed",
+    passed,
+    message: passed ? "Step checks passed." : "Step checks failed.",
+    durationMs: Date.now() - startedAt,
+    finishedAt: Date.now(),
+    errors: [],
+    groups,
+    testResults: groups.map((group) => ({
+      name: group.name,
+      status: group.skipped ? "skipped" : group.ok ? "passed" : "failed",
+      message: group.reason,
+      durationMs: group.durationMs,
+    })),
+  };
 }

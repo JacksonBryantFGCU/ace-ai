@@ -1,4 +1,4 @@
-export type ScenarioRoleFamily = "frontend" | "backend" | "fullstack" | "other";
+export type ScenarioRoleFamily = "frontend" | "backend" | "fullstack" | "machine-learning" | "other";
 
 export interface ScenarioRoleMetadata {
   jobRoles: readonly string[];
@@ -18,7 +18,7 @@ export interface ScenarioTrackMatch {
   family: ScenarioRoleFamily;
 }
 
-const ROLE_ALIASES: Record<string, "frontend" | "backend" | "fullstack" | null> = {
+const ROLE_ALIASES: Record<string, "frontend" | "backend" | "fullstack" | "machine-learning" | null> = {
   frontend: "frontend",
   "front-end": "frontend",
   "frontend engineer": "frontend",
@@ -29,15 +29,22 @@ const ROLE_ALIASES: Record<string, "frontend" | "backend" | "fullstack" | null> 
   "full-stack": "fullstack",
   "full stack": "fullstack",
   "full-stack engineer": "fullstack",
+  "machine-learning": "machine-learning",
+  "machine learning": "machine-learning",
+  ml: "machine-learning",
+  "ml engineer": "machine-learning",
 };
 
-export function normalizeScenarioRole(value: string | undefined): "frontend" | "backend" | "fullstack" | null {
+export function normalizeScenarioRole(
+  value: string | undefined,
+): "frontend" | "backend" | "fullstack" | "machine-learning" | null {
   if (!value) return null;
   return ROLE_ALIASES[value.trim().toLowerCase()] ?? null;
 }
 
 export function categoryRoleFamily(category: string): ScenarioRoleFamily {
   const normalized = category.trim().toLowerCase();
+  if (normalized.includes("machine-learning") || normalized.includes("machine learning")) return "machine-learning";
   if (normalized.startsWith("frontend") || normalized.includes("frontend")) return "frontend";
   if (normalized.startsWith("backend") || normalized.includes("backend")) return "backend";
   if (normalized.includes("fullstack") || normalized.includes("full-stack")) return "fullstack";
@@ -48,10 +55,13 @@ export function scenarioRoleFamily(scenario: ScenarioRoleMetadata): ScenarioRole
   if (scenario.type === "fullstack") return "fullstack";
   if (scenario.type === "backend") return "backend";
   if (scenario.type === "frontend") return "frontend";
+  if (scenario.type === "machine-learning") return "machine-learning";
   const roles = scenario.jobRoles.map((role) => normalizeScenarioRole(role)).filter(Boolean);
   const hasFrontend = roles.includes("frontend");
   const hasBackend = roles.includes("backend");
   const hasFullstack = roles.includes("fullstack");
+  const hasMachineLearning = roles.includes("machine-learning");
+  if (hasMachineLearning) return "machine-learning";
   if (hasFullstack || (hasFrontend && hasBackend)) return "fullstack";
   if (hasBackend) return "backend";
   if (hasFrontend) return "frontend";
@@ -66,6 +76,9 @@ export function roleMatchForScenario(scenario: ScenarioRoleMetadata, requestedRo
   }
 
   if (scenario.type === "fullstack" && requested !== "fullstack") {
+    return { allowed: false, exact: false, fallback: false, family };
+  }
+  if (scenario.type === "machine-learning" && requested !== "machine-learning") {
     return { allowed: false, exact: false, fallback: false, family };
   }
   if (scenario.type === "backend" && requested === "frontend") {
@@ -86,6 +99,11 @@ export function roleMatchForScenario(scenario: ScenarioRoleMetadata, requestedRo
 
   if (requested === "backend") {
     const fallback = !hasAuthoredRoles && categoryRoleFamily(scenario.category) === "backend";
+    return { allowed: exact || fallback, exact, fallback, family };
+  }
+
+  if (requested === "machine-learning") {
+    const fallback = !hasAuthoredRoles && categoryRoleFamily(scenario.category) === "machine-learning";
     return { allowed: exact || fallback, exact, fallback, family };
   }
 
@@ -110,6 +128,9 @@ export function interviewTrackMatchForScenario(
   if (requested === "fullstack") {
     return { allowed: family === "fullstack", family };
   }
+  if (requested === "machine-learning") {
+    return { allowed: family === "machine-learning", family };
+  }
 
   return { allowed: roleMatchForScenario(scenario, requested).allowed, family };
 }
@@ -119,5 +140,6 @@ export function noScenarioMessage(role: string | undefined): string {
   if (normalized === "frontend") return "No frontend scenarios are available yet.";
   if (normalized === "backend") return "No backend scenarios are available yet.";
   if (normalized === "fullstack") return "No full-stack scenarios are available yet.";
+  if (normalized === "machine-learning") return "No machine learning scenarios are available yet.";
   return "No scenarios are available yet.";
 }

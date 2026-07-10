@@ -109,4 +109,10 @@ describe("loadScenario", () => {
     expect(candidate.files).toHaveLength(3);
     expect(candidate.scenario.steps[0]?.prompt).toBeTruthy();
   });
+
+  it("reuses the same frozen loaded scenario within the cache window", async () => {
+    const first = await loadScenario(CANONICAL, { includeAuthorOnly: false });
+    const second = await loadScenario(CANONICAL, { includeAuthorOnly: false });
+    expect(second).toBe(first);
+  });
 });

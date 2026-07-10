@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import { verifyStepOnServer } from "@/server/scenarios/verification-service";
+import { verifyFinalOnServer, verifyStepOnServer } from "@/server/scenarios/verification-service";
 import type { SnapshotFile } from "@/lib/scenarios/verification";
 
 /**
@@ -90,5 +90,16 @@ describe("server verification service (production execution layer)", () => {
     ]);
     expect(a.status).toBe("passed"); // step-1 tests only
     expect(b.status).toBe("failed"); // step-1 + step-2 → race fails
+  });
+});
+
+describe("verifyFinalOnServer (Phase 4 — compatibility)", () => {
+  it("leaves a non-ML (single-file) scenario's final validation as a clear manual result, not a crash", async () => {
+    const result = await verifyFinalOnServer({
+      scenarioSlug: "user-directory-search",
+      files: workspace(candidate("solution/step-1/UserSearch.tsx")),
+    });
+    expect(result.status).toBe("manual");
+    expect(result.message).toBe("Final validation is not available for this scenario type yet.");
   });
 });

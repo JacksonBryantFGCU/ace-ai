@@ -2,7 +2,12 @@
 
 import { unstable_cache } from "next/cache";
 import { checkpointSource } from "@/server/scenarios/checkpoint-source";
-import { verifyStepOnServer } from "@/server/scenarios/verification-service";
+import { verifyFinalOnServer, verifyStepOnServer } from "@/server/scenarios/verification-service";
+import {
+  getMlDataPreview,
+  listMlDataFiles,
+} from "@/server/scenarios/machine-learning-data-preview";
+import { previewMlScript } from "@/server/scenarios/machine-learning-preview";
 import { loadScenario } from "@/server/scenarios/load";
 import { requireUser } from "@/server/auth";
 import { getOpenAI } from "@/server/ai/client";
@@ -13,6 +18,8 @@ import {
   formatCandidateWork,
 } from "@/server/ai/prompts/scenario-evaluation";
 import type { AiReviewInput, AiReviewResult } from "@/lib/scenarios/evaluation/ai-review";
+import type { MlDataPreview } from "@/lib/scenarios/machine-learning-data-preview";
+import type { MlScriptPreviewResult } from "@/lib/scenarios/machine-learning-preview";
 import type { CheckpointFile } from "@/lib/scenarios/types";
 import type {
   SnapshotFile,
@@ -35,6 +42,60 @@ export async function runStepVerification(input: {
   return verifyStepOnServer({
     scenarioSlug: input.scenarioSlug,
     step: input.step,
+    files: input.files,
+  });
+}
+
+/**
+ * Run FINAL validation on the server (Phase 4 UI over the Phase 3
+ * `verifyMlScenarioFinal`/`verifyMlFinal` verifier). Only `machine-learning`
+ * scenarios currently have a real final verifier — see `verifyFinalOnServer`.
+ * Authenticated, mirrors `runStepVerification`'s shape.
+ */
+export async function runFinalVerification(input: {
+  scenarioSlug: string;
+  files: SnapshotFile[];
+}): Promise<VerificationResult> {
+  await requireUser();
+  return verifyFinalOnServer({
+    scenarioSlug: input.scenarioSlug,
+    files: input.files,
+  });
+}
+
+/**
+ * List the candidate-visible `workspace/data/*.csv` files for an ML scenario's
+ * Data Preview panel. Authenticated; resolves through the same candidate-facing
+ * `LoadedScenario.files` allowlist as every other panel (never touches `tests/`
+ * or `solution/`).
+ */
+export async function listMlScenarioDataFiles(scenarioSlug: string): Promise<string[]> {
+  await requireUser();
+  return listMlDataFiles(scenarioSlug);
+}
+
+/**
+ * Fetch a bounded preview (columns + first 5 rows) of one `workspace/data/*.csv`
+ * file for the ML Data Preview panel. Authenticated.
+ */
+export async function fetchMlDataPreview(scenarioSlug: string, fileName: string): Promise<MlDataPreview> {
+  await requireUser();
+  return getMlDataPreview(scenarioSlug, fileName);
+}
+
+/**
+ * Run the ML "Output Preview" — `python main.py` against the candidate's
+ * current workspace (Data Preview's sibling: notebook-style script output, NOT
+ * verification). Never runs pytest, never touches step pass/fail or gating.
+ * Authenticated.
+ */
+export async function runMlPreview(input: {
+  scenarioSlug: string;
+  files: SnapshotFile[];
+}): Promise<MlScriptPreviewResult> {
+  await requireUser();
+  return previewMlScript({
+    scenarioSlug: input.scenarioSlug,
     files: input.files,
   });
 }

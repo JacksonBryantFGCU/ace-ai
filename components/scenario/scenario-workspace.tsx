@@ -16,21 +16,28 @@ import { ActivityRail, type PanelTab } from "@/components/scenario/shell/activit
 import { SidePanel } from "@/components/scenario/shell/side-panel";
 import { ScenarioTab } from "@/components/scenario/shell/scenario-tab";
 import { ExplorerTab } from "@/components/scenario/shell/explorer-tab";
+import { DataPreviewTab } from "@/components/scenario/shell/data-preview-tab";
 import { ConversationTab } from "@/components/scenario/shell/conversation-tab";
 import { EditorColumn } from "@/components/scenario/shell/editor-column";
 import { PreviewPanel } from "@/components/scenario/preview-panel";
+import { MlNotebookPreviewPanel } from "@/components/scenario/preview/ml-notebook-preview-panel";
 import { CheckpointDialog } from "@/components/scenario/checkpoint-dialog";
 import { EvaluationReport } from "@/components/scenario/evaluation-report";
 import { EvaluationSkeleton } from "@/components/scenario/ui/evaluation-skeleton";
 import { Timer } from "@/components/ui/timer";
 import { shell } from "@/components/scenario/shell/tokens";
 import { getInterviewer } from "@/lib/constants";
-import { canAdvanceAfterVerification, resolveVerificationMode } from "@/lib/scenarios/verification-mode";
+import {
+  canAdvanceAfterVerification,
+  getPreviewPanelKind,
+  resolveVerificationMode,
+} from "@/lib/scenarios/verification-mode";
 import type { LoadedScenario } from "@/lib/scenarios/types";
 
 const PANEL_TITLE: Record<PanelTab, string> = {
   explorer: "Explorer",
   scenario: "Scenario",
+  data: "Data Preview",
   conversation: "Conversation",
 };
 
@@ -71,16 +78,28 @@ export function ScenarioWorkspace({
   saveConfig?: VapiInterviewConfig;
 }) {
   const { scenario } = loaded;
-  const { controller, recordConversation, conversation, machine, session, verification, evaluation } =
-    useInterviewController(loaded);
+  const {
+    controller,
+    recordConversation,
+    conversation,
+    machine,
+    session,
+    verification,
+    finalVerification,
+    mlPreview,
+    evaluation,
+  } = useInterviewController(loaded);
 
   const stepIndex = machine.state.stepIndex;
   const authoredStep = scenario.steps[stepIndex];
   const verificationMode = authoredStep ? resolveVerificationMode(scenario, "step") : "single-file";
+  const isScenarioRunVerification = verificationMode === "scenario-step" || verificationMode === "python-step";
+  const isMlScenario = verificationMode === "python-step";
+  const previewPanelKind = getPreviewPanelKind(verificationMode);
   const verificationSupported =
-    verificationMode === "scenario-step" || (authoredStep?.verify.harness ?? "none") !== "none";
+    isScenarioRunVerification || (authoredStep?.verify.harness ?? "none") !== "none";
   const nextLocked =
-    verificationMode === "scenario-step" &&
+    isScenarioRunVerification &&
     machine.current !== null &&
     !canAdvanceAfterVerification(machine.current.status);
   const interviewerName = getInterviewer(undefined).name;
@@ -202,7 +221,12 @@ export function ScenarioWorkspace({
         <EndGate onEnd={() => setEnded(true)} />
       ) : (
         <div className="flex min-h-0 flex-1">
-          <ActivityRail activeTab={activeTab} panelOpen={panelOpen} onSelect={selectTab} />
+          <ActivityRail
+            activeTab={activeTab}
+            panelOpen={panelOpen}
+            onSelect={selectTab}
+            showDataPreview={isMlScenario}
+          />
 
           {panelOpen ? (
             <SidePanel title={PANEL_TITLE[activeTab]} onCollapse={() => setPanelOpen(false)}>
@@ -213,13 +237,20 @@ export function ScenarioWorkspace({
                   controller={controller}
                   verification={{
                     supported: verificationSupported,
-                    mode: verificationMode === "scenario-step" ? "scenario-step" : "single-file",
+                    mode:
+                      verificationMode === "scenario-step" || verificationMode === "python-step"
+                        ? verificationMode
+                        : "single-file",
                     running: verification.running,
                     result: verification.result,
                     onRun,
-                    runLabel: verificationMode === "scenario-step" ? "Run step checks" : "Run verification",
+                    runLabel: isScenarioRunVerification ? "Run step checks" : "Run verification",
                     runningLabel:
-                      verificationMode === "scenario-step" ? "Running fullstack checks..." : "Running…",
+                      verificationMode === "scenario-step"
+                        ? "Running fullstack checks..."
+                        : verificationMode === "python-step"
+                          ? "Running Python checks..."
+                          : "Running…",
                     nextLocked,
                     nextLockedReason: nextLocked ? "Verify this step before moving to the next one." : undefined,
                   }}
@@ -228,9 +259,17 @@ export function ScenarioWorkspace({
                     applied: machine.current?.status === "checkpoint_applied",
                     onUse: openCheckpoint,
                   }}
+                  finalCheck={{
+                    visible: isMlScenario,
+                    running: finalVerification.running,
+                    result: finalVerification.result,
+                    onRun: () => void finalVerification.run(),
+                  }}
                 />
               ) : activeTab === "explorer" ? (
                 <ExplorerTab api={session} />
+              ) : activeTab === "data" ? (
+                <DataPreviewTab scenarioSlug={loaded.slug} />
               ) : (
                 <ConversationTab conversation={conversation} interviewerName={interviewerName} />
               )}
@@ -239,7 +278,17 @@ export function ScenarioWorkspace({
 
           <EditorColumn api={session} />
 
-          <PreviewPanel loaded={loaded} files={session.session.files} />
+          {/* ML scenarios get the notebook-style script preview here instead of the
+              generic Browser/API/Fullstack panel — see `getPreviewPanelKind`. */}
+          {previewPanelKind === "ml" ? (
+            <MlNotebookPreviewPanel
+              running={mlPreview.running}
+              result={mlPreview.result}
+              onRun={() => void mlPreview.run()}
+            />
+          ) : (
+            <PreviewPanel loaded={loaded} files={session.session.files} />
+          )}
         </div>
       )}
 

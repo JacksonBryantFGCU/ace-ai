@@ -5,6 +5,7 @@ import { loadScenario } from "@/server/scenarios/load";
 import type { FullstackRuntimeHandle } from "@/lib/scenarios/fullstack-runtime";
 import type { FullstackPreviewInfo, FullstackPreviewResult } from "@/lib/scenarios/fullstack-preview";
 import type { SnapshotFile } from "@/lib/scenarios/verification";
+import { timePerf } from "@/server/scenarios/perf";
 
 const previews = new Map<string, FullstackRuntimeHandle>();
 
@@ -25,34 +26,40 @@ export async function startFullstackPreviewOnServer(input: {
   scenarioSlug: string;
   files: SnapshotFile[];
 }): Promise<FullstackPreviewResult> {
-  let handle: FullstackRuntimeHandle | null = null;
-  try {
-    const loaded = await loadScenario(input.scenarioSlug, { includeAuthorOnly: false });
-    handle = await startFullstackRuntime(loaded, { files: input.files });
-    const runtimeId = randomUUID();
-    previews.set(runtimeId, handle);
-    return { ok: true, preview: toInfo(runtimeId, handle) };
-  } catch (error) {
-    if (handle) await handle.stop();
-    return {
-      ok: false,
-      error: {
-        message: error instanceof Error ? error.message : "Fullstack preview failed to start.",
-        stage: error instanceof FullstackRuntimeStartupError ? error.stage : undefined,
-        logs: handle?.logs(),
-      },
-    };
-  }
+  return timePerf("preview.startFullstack", async () => {
+    let handle: FullstackRuntimeHandle | null = null;
+    try {
+      const loaded = await loadScenario(input.scenarioSlug, { includeAuthorOnly: false });
+      handle = await startFullstackRuntime(loaded, { files: input.files });
+      const runtimeId = randomUUID();
+      previews.set(runtimeId, handle);
+      return { ok: true, preview: toInfo(runtimeId, handle) };
+    } catch (error) {
+      if (handle) await handle.stop();
+      return {
+        ok: false,
+        error: {
+          message: error instanceof Error ? error.message : "Fullstack preview failed to start.",
+          stage: error instanceof FullstackRuntimeStartupError ? error.stage : undefined,
+          logs: handle?.logs(),
+        },
+      };
+    }
+  }, { slug: input.scenarioSlug, fileCount: input.files.length });
 }
 
 export async function stopFullstackPreviewOnServer(runtimeId: string): Promise<void> {
-  const handle = previews.get(runtimeId);
-  previews.delete(runtimeId);
-  if (handle) await handle.stop();
+  return timePerf("preview.stopFullstack", async () => {
+    const handle = previews.get(runtimeId);
+    previews.delete(runtimeId);
+    if (handle) await handle.stop();
+  }, { runtimeId });
 }
 
 export async function getFullstackPreviewLogsOnServer(runtimeId: string): Promise<FullstackPreviewInfo | null> {
-  const handle = previews.get(runtimeId);
-  if (!handle) return null;
-  return toInfo(runtimeId, handle);
+  return timePerf("preview.getLogs", async () => {
+    const handle = previews.get(runtimeId);
+    if (!handle) return null;
+    return toInfo(runtimeId, handle);
+  }, { runtimeId });
 }

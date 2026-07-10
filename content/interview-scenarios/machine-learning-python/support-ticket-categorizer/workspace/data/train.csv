@@ -1,0 +1,81 @@
+ticket_id,subject,message,category
+TICKET-1,Invoice question,My invoice shows an incorrect billing charge for this month.,billing
+TICKET-2,App crashing on login,There is a login bug preventing me from accessing the app.,technical
+TICKET-3,Password reset needed,I want to update my profile information on my account.,account
+TICKET-4,Package delivery delay,"The shipping address on my order is incorrect, please fix it.",shipping
+TICKET-5,Refund request,I need help understanding my monthly subscription billing charge.,billing
+TICKET-6,API error report,The application fails to load and just shows a blank screen.,technical
+TICKET-7,Email change request,I would like to change my username on my account profile.,account
+TICKET-8,Tracking number missing,I never received my package even though it shows delivered.,shipping
+TICKET-9,Payment charge issue,The subscription payment did not go through correctly on my invoice.,billing
+TICKET-10,Login bug report,The software crashed unexpectedly while I was using the app.,technical
+TICKET-11,Profile update issue,I cannot access my account anymore and need help with login.,account
+TICKET-12,Shipment address wrong,I am having trouble tracking my shipment status online.,shipping
+TICKET-13,Subscription billing problem,I was charged twice for my subscription payment this month.,billing
+TICKET-14,App not loading,The app crashes every time I try to log in to my account.,technical
+TICKET-15,Username change request,I need to reset my password because I forgot my login.,account
+TICKET-16,Delivery not received,My package delivery has been delayed for over a week now.,shipping
+TICKET-17,Overcharged on invoice,"Please refund my last payment, the charge was incorrect.",billing
+TICKET-18,Software crash issue,I am getting an API error every time I call the endpoint.,technical
+TICKET-19,Account access problem,Please help me change the email address on my account.,account
+TICKET-20,Package tracking issue,I do not have a tracking number for my recent shipment.,shipping
+TICKET-21,Invoice question,My invoice shows an incorrect billing charge for this month.,billing
+TICKET-22,App crashing on login,There is a login bug preventing me from accessing the app.,technical
+TICKET-23,Password reset needed,I want to update my profile information on my account.,account
+TICKET-24,Package delivery delay,"The shipping address on my order is incorrect, please fix it.",shipping
+TICKET-25,Refund request,I need help understanding my monthly subscription billing charge.,billing
+TICKET-26,API error report,The application fails to load and just shows a blank screen.,technical
+TICKET-27,Email change request,I would like to change my username on my account profile.,account
+TICKET-28,Tracking number missing,I never received my package even though it shows delivered.,shipping
+TICKET-29,Payment charge issue,The subscription payment did not go through correctly on my invoice.,billing
+TICKET-30,Login bug report,The software crashed unexpectedly while I was using the app.,technical
+TICKET-31,Profile update issue,I cannot access my account anymore and need help with login.,account
+TICKET-32,Shipment address wrong,I am having trouble tracking my shipment status online.,shipping
+TICKET-33,Subscription billing problem,I was charged twice for my subscription payment this month.,billing
+TICKET-34,App not loading,The app crashes every time I try to log in to my account.,technical
+TICKET-35,Username change request,I need to reset my password because I forgot my login.,account
+TICKET-36,Delivery not received,My package delivery has been delayed for over a week now.,shipping
+TICKET-37,Overcharged on invoice,"Please refund my last payment, the charge was incorrect.",billing
+TICKET-38,Software crash issue,I am getting an API error every time I call the endpoint.,technical
+TICKET-39,Account access problem,Please help me change the email address on my account.,account
+TICKET-40,Package tracking issue,I do not have a tracking number for my recent shipment.,shipping
+TICKET-41,Invoice question,My invoice shows an incorrect billing charge for this month.,billing
+TICKET-42,App crashing on login,There is a login bug preventing me from accessing the app.,technical
+TICKET-43,Password reset needed,I want to update my profile information on my account.,account
+TICKET-44,Package delivery delay,"The shipping address on my order is incorrect, please fix it.",shipping
+TICKET-45,Refund request,I need help understanding my monthly subscription billing charge.,billing
+TICKET-46,API error report,The application fails to load and just shows a blank screen.,technical
+TICKET-47,Email change request,I would like to change my username on my account profile.,account
+TICKET-48,Tracking number missing,I never received my package even though it shows delivered.,shipping
+TICKET-49,Payment charge issue,The subscription payment did not go through correctly on my invoice.,billing
+TICKET-50,Login bug report,The software crashed unexpectedly while I was using the app.,technical
+TICKET-51,Profile update issue,I cannot access my account anymore and need help with login.,account
+TICKET-52,Shipment address wrong,I am having trouble tracking my shipment status online.,shipping
+TICKET-53,Subscription billing problem,I was charged twice for my subscription payment this month.,billing
+TICKET-54,App not loading,The app crashes every time I try to log in to my account.,technical
+TICKET-55,Username change request,I need to reset my password because I forgot my login.,account
+TICKET-56,Delivery not received,My package delivery has been delayed for over a week now.,shipping
+TICKET-57,Overcharged on invoice,"Please refund my last payment, the charge was incorrect.",billing
+TICKET-58,Software crash issue,I am getting an API error every time I call the endpoint.,technical
+TICKET-59,Account access problem,Please help me change the email address on my account.,account
+TICKET-60,Package tracking issue,I do not have a tracking number for my recent shipment.,shipping
+TICKET-61,Invoice question,My invoice shows an incorrect billing charge for this month.,billing
+TICKET-62,App crashing on login,There is a login bug preventing me from accessing the app.,technical
+TICKET-63,Password reset needed,I want to update my profile information on my account.,account
+TICKET-64,Package delivery delay,"The shipping address on my order is incorrect, please fix it.",shipping
+TICKET-65,Refund request,I need help understanding my monthly subscription billing charge.,billing
+TICKET-66,API error report,The application fails to load and just shows a blank screen.,technical
+TICKET-67,Email change request,I would like to change my username on my account profile.,account
+TICKET-68,Tracking number missing,I never received my package even though it shows delivered.,shipping
+TICKET-69,Payment charge issue,The subscription payment did not go through correctly on my invoice.,billing
+TICKET-70,Login bug report,The software crashed unexpectedly while I was using the app.,technical
+TICKET-71,Profile update issue,I cannot access my account anymore and need help with login.,account
+TICKET-72,Shipment address wrong,I am having trouble tracking my shipment status online.,shipping
+TICKET-73,Subscription billing problem,I was charged twice for my subscription payment this month.,billing
+TICKET-74,App not loading,The app crashes every time I try to log in to my account.,technical
+TICKET-75,Username change request,I need to reset my password because I forgot my login.,account
+TICKET-76,Delivery not received,My package delivery has been delayed for over a week now.,shipping
+TICKET-77,Overcharged on invoice,"Please refund my last payment, the charge was incorrect.",billing
+TICKET-78,Software crash issue,I am getting an API error every time I call the endpoint.,technical
+TICKET-79,Account access problem,Please help me change the email address on my account.,account
+TICKET-80,Package tracking issue,I do not have a tracking number for my recent shipment.,shipping

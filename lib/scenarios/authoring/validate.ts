@@ -2,10 +2,12 @@ import { validateFrontmatter } from "@/lib/scenarios/authoring/frontmatter";
 import { validateExecution, validateDatabase } from "@/lib/scenarios/authoring/execution";
 import { validateWorkspace } from "@/lib/scenarios/authoring/workspace";
 import { validateFullstackContract } from "@/lib/scenarios/authoring/fullstack";
+import { validateMachineLearningContract } from "@/lib/scenarios/authoring/machine-learning";
 import { validateSteps } from "@/lib/scenarios/authoring/steps";
 import { validateRubric } from "@/lib/scenarios/authoring/rubric";
 import { validatePreview } from "@/lib/scenarios/authoring/preview";
 import { validateSolution, type SolutionVerifier } from "@/lib/scenarios/authoring/solution";
+import type { MlSolutionRunner } from "@/lib/scenarios/authoring/machine-learning-solution";
 import { diag, type AuthoredBundle, type Diagnostic, type ScenarioReport } from "@/lib/scenarios/authoring/types";
 
 export interface ValidateOptions {
@@ -17,6 +19,10 @@ export interface ValidateOptions {
    * the process-wide platform so engine selection is identical to production.
    */
   verify?: SolutionVerifier;
+  /** Real ML dependencies (pytest + optional metrics-artifact runner) for
+   *  machine-learning scenarios — the same dependencies production interview
+   *  verification uses. Required for `runSolution` on ML scenarios. */
+  mlDependencies?: MlSolutionRunner;
 }
 
 /** Static (no-execution) validators. */
@@ -25,6 +31,7 @@ const STATIC_VALIDATORS = [
   validateExecution,
   validateWorkspace,
   validateFullstackContract,
+  validateMachineLearningContract,
   validateSteps,
   validateRubric,
   validatePreview,
@@ -42,10 +49,11 @@ export async function validateScenario(
   const diagnostics: Diagnostic[] = STATIC_VALIDATORS.flatMap((v) => v(bundle));
   // Real-database validation (SQLite scenarios only; a no-op otherwise).
   diagnostics.push(...(await validateDatabase(bundle)));
-  // Execute the reference solution through the ExecutionPlatform. Skipped when no
-  // verifier is injected (static-only callers), so it never runs without a platform.
+  // Execute the reference solution through the ExecutionPlatform (or, for ML
+  // scenarios, the real pytest engine). Skipped when no verifier is injected
+  // (static-only callers), so it never runs without one.
   if (options.runSolution && options.verify) {
-    diagnostics.push(...(await validateSolution(bundle, options.verify)));
+    diagnostics.push(...(await validateSolution(bundle, options.verify, options.mlDependencies)));
   }
   return {
     slug: bundle.slug,

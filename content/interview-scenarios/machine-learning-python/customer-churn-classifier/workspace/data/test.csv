@@ -1,0 +1,16 @@
+customer_id,tenure_months,monthly_charges,support_tickets,contract_type,auto_pay
+CUST-160,0,62.2,0,monthly,yes
+CUST-161,7,65.57,2,annual,no
+CUST-162,14,68.94,4,two_year,yes
+CUST-163,21,72.31,0,monthly,no
+CUST-164,28,75.68,2,annual,yes
+CUST-165,35,79.05,4,two_year,no
+CUST-166,42,82.42,0,monthly,yes
+CUST-167,49,85.79,2,annual,no
+CUST-168,56,89.16,4,two_year,yes
+CUST-169,3,92.53,0,monthly,no
+CUST-170,10,95.9,2,annual,yes
+CUST-171,17,99.27,4,two_year,no
+CUST-172,24,22.64,0,monthly,yes
+CUST-173,31,26.01,2,annual,no
+CUST-174,38,29.38,4,two_year,yes

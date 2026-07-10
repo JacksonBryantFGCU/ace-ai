@@ -24,8 +24,13 @@ export type VerificationStatus =
   | "manual" // no automated engine yet — awaiting human confirmation
   | "unsupported"; // no engine registered for this harness
 
-export type VerificationMode = "single-file" | "scenario-step" | "scenario-final";
-export type VerificationGroupName = "backend" | "frontend" | "integration";
+export type VerificationMode =
+  | "single-file"
+  | "scenario-step"
+  | "scenario-final"
+  | "python-step"
+  | "python-final";
+export type VerificationGroupName = "backend" | "frontend" | "integration" | "workspace" | "python" | "metrics";
 
 export type TestCaseStatus = "passed" | "failed" | "skipped";
 
@@ -194,3 +199,4 @@ export function createVerificationService(engines: VerificationEngine[]): Verifi
     },
   };
 }
+

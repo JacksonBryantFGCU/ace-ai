@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useTransition } from "react";
+import { useEffect, useRef, useState, useTransition } from "react";
 import { AlertTriangle, ExternalLink, Info, Loader2, Monitor, ScrollText } from "lucide-react";
 import {
   getFullstackPreviewLogs,
@@ -25,31 +25,55 @@ export function FullstackPreviewFrame({
   const [preview, setPreview] = useState<FullstackPreviewInfo | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [tab, setTab] = useState<Tab>("app");
+  const [refreshing, setRefreshing] = useState(false);
   const [pending, startTransition] = useTransition();
+  const previewRef = useRef<FullstackPreviewInfo | null>(null);
+
+  useEffect(() => {
+    previewRef.current = preview;
+  }, [preview]);
 
   useEffect(() => {
     let active = true;
-    let runtimeId: string | null = null;
-
-    startTransition(async () => {
-      const result = await startFullstackPreview({ scenarioSlug, files });
-      if (!active) {
-        if (result.ok) await stopFullstackPreview(result.preview.runtimeId);
-        return;
-      }
-      if (result.ok) {
-        runtimeId = result.preview.runtimeId;
-        setPreview(result.preview);
-      } else {
-        setError(result.error.stage ? `${result.error.stage}: ${result.error.message}` : result.error.message);
-      }
-    });
+    let nextRuntimeId: string | null = null;
+    const timer = window.setTimeout(() => {
+      startTransition(async () => {
+        setError(null);
+        setRefreshing(previewRef.current !== null);
+        const result = await startFullstackPreview({ scenarioSlug, files });
+        if (!active) {
+          if (result.ok) await stopFullstackPreview(result.preview.runtimeId);
+          return;
+        }
+        if (result.ok) {
+          const previousRuntimeId = previewRef.current?.runtimeId ?? null;
+          nextRuntimeId = result.preview.runtimeId;
+          setPreview(result.preview);
+          setRefreshing(false);
+          if (previousRuntimeId && previousRuntimeId !== result.preview.runtimeId) {
+            void stopFullstackPreview(previousRuntimeId);
+          }
+        } else {
+          setRefreshing(false);
+          setError(result.error.stage ? `${result.error.stage}: ${result.error.message}` : result.error.message);
+        }
+      });
+    }, previewRef.current ? 250 : 0);
 
     return () => {
       active = false;
-      if (runtimeId) void stopFullstackPreview(runtimeId);
+      window.clearTimeout(timer);
+      if (nextRuntimeId) void stopFullstackPreview(nextRuntimeId);
     };
   }, [scenarioSlug, files]);
+
+  useEffect(
+    () => () => {
+      const runtimeId = previewRef.current?.runtimeId;
+      if (runtimeId) void stopFullstackPreview(runtimeId);
+    },
+    [],
+  );
 
   function refreshLogs() {
     if (!preview) return;
@@ -70,7 +94,7 @@ export function FullstackPreviewFrame({
         </div>
         <div className="ml-auto flex shrink-0 items-center gap-1.5">
           <StatusBadge tone={preview ? "success" : error ? "danger" : "neutral"}>
-            {preview ? "Live" : error ? "Error" : "Starting"}
+            {preview ? (refreshing ? "Refreshing" : "Live") : error ? "Error" : "Starting"}
           </StatusBadge>
           {preview ? (
             <a
@@ -109,15 +133,22 @@ export function FullstackPreviewFrame({
         ) : !preview || pending ? (
           <div className="flex h-full flex-col items-center justify-center gap-3 text-sm text-gray-400">
             <Loader2 className="size-5 animate-spin" />
-            Starting fullstack runtime...
+            {refreshing ? "Refreshing fullstack runtime..." : "Starting fullstack runtime..."}
           </div>
         ) : tab === "app" ? (
-          <iframe
-            title="Fullstack app preview"
-            src={preview.previewUrl}
-            className="h-full w-full border-0 bg-white"
-            sandbox="allow-forms allow-modals allow-popups allow-same-origin allow-scripts"
-          />
+          <div className="relative h-full">
+            <iframe
+              title="Fullstack app preview"
+              src={preview.previewUrl}
+              className="h-full w-full border-0 bg-white"
+              sandbox="allow-forms allow-modals allow-popups allow-same-origin allow-scripts"
+            />
+            {refreshing ? (
+              <div className="pointer-events-none absolute inset-x-3 top-3 rounded-md border border-white/10 bg-black/65 px-3 py-2 text-xs text-gray-200 shadow-lg">
+                Refreshing preview…
+              </div>
+            ) : null}
+          </div>
         ) : tab === "api" ? (
           <ApiInfo preview={preview} />
         ) : (

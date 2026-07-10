@@ -1,0 +1,23 @@
+{
+  "name": "analytics-campaign-dashboard-frontend",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite --host 127.0.0.1",
+    "test": "vitest run --environment jsdom",
+    "test:integration": "vitest run --environment jsdom"
+  },
+  "dependencies": {
+    "@vitejs/plugin-react": "workspace:*",
+    "vite": "workspace:*",
+    "typescript": "workspace:*",
+    "react": "workspace:*",
+    "react-dom": "workspace:*"
+  },
+  "devDependencies": {
+    "@testing-library/react": "workspace:*",
+    "@testing-library/user-event": "workspace:*",
+    "vitest": "workspace:*",
+    "jsdom": "workspace:*"
+  }
+}

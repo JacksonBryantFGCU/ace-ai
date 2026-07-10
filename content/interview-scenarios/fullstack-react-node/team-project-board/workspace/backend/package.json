@@ -1,0 +1,17 @@
+{
+  "name": "team-project-board-backend",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "tsx src/server.ts",
+    "test": "vitest run --environment node"
+  },
+  "dependencies": {
+    "express": "workspace:*",
+    "sql.js": "workspace:*"
+  },
+  "devDependencies": {
+    "tsx": "workspace:*",
+    "vitest": "workspace:*"
+  }
+}

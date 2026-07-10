@@ -41,10 +41,6 @@ export function PreviewPanel({
     () => files.map((file) => ({ path: file.path, content: file.content, role: file.role })),
     [files],
   );
-  const fullstackPreviewKey = useMemo(
-    () => `${loaded.slug}:${fullstackFiles.map((file) => `${file.path}:${file.content}`).join("|")}`,
-    [loaded.slug, fullstackFiles],
-  );
   const output = renderPreview(loaded.preview, snapshot, previewRendererRegistry);
 
   return (
@@ -53,7 +49,7 @@ export function PreviewPanel({
       style={{ background: shell.panelBg, borderLeft: `1px solid ${shell.border}` }}
     >
       {isFullstackRuntimeScenario(loaded) ? (
-        <FullstackPreviewFrame key={fullstackPreviewKey} scenarioSlug={loaded.slug} files={fullstackFiles} />
+        <FullstackPreviewFrame scenarioSlug={loaded.slug} files={fullstackFiles} />
       ) : output.status === "rendered" ? (
         output.node
       ) : (

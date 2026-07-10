@@ -3,6 +3,7 @@ import { scenarioSchema } from "@/lib/scenarios/schema";
 import { validateFrontmatter } from "@/lib/scenarios/authoring/frontmatter";
 import { validateExecution, validateDatabase } from "@/lib/scenarios/authoring/execution";
 import { validateFullstackContract } from "@/lib/scenarios/authoring/fullstack";
+import { validateMachineLearningContract } from "@/lib/scenarios/authoring/machine-learning";
 import { validateWorkspace } from "@/lib/scenarios/authoring/workspace";
 import { validateSteps } from "@/lib/scenarios/authoring/steps";
 import { validateRubric } from "@/lib/scenarios/authoring/rubric";
@@ -137,6 +138,63 @@ function fullstackBundle(overrides: {
       "tests/integration/step-1.spec.ts": "test('flow', () => {});",
       "solution/step-1/backend/app.ts": "export default {};",
       "solution/step-1/frontend/App.tsx": "export function App() { return <div />; }",
+      ...overrides.files,
+    },
+  };
+}
+
+function mlBundle(overrides: {
+  frontmatter?: Record<string, unknown>;
+  files?: Record<string, string>;
+} = {}): AuthoredBundle {
+  const step = {
+    id: "step-1",
+    kind: "implement",
+    prompt: "Train a baseline model on the training set.",
+    verification: "hybrid",
+    verify: { harness: "none" },
+    weight: 100,
+    rubric: [{ criterion: "Baseline works", weight: 100, detail: "Produces predictions for the test set." }],
+    checkpoint: { files: ["solution/step-1/main.py"] },
+  };
+  const fm = {
+    ...baseFrontmatter(),
+    id: "ml-workflow",
+    title: "ML Workflow",
+    summary: "Build a baseline model on a small local dataset.",
+    category: "machine-learning-python",
+    skills: ["pandas"],
+    jobRoles: ["ml"],
+    tags: ["language:python"],
+    difficulty: "medium",
+    stack: { languages: ["python"], harness: "python" },
+    type: "machine-learning",
+    runtime: "python",
+    execution: { mode: "python-ml" },
+    workspace: {
+      files: [
+        { path: "main.py", role: "edit" },
+        { path: "data/train.csv", role: "readonly" },
+      ],
+      entry: "main.py",
+    },
+    steps: [step],
+    ...overrides.frontmatter,
+  };
+  const parsed = scenarioSchema.safeParse(fm);
+  return {
+    slug: "ml-workflow",
+    category: "machine-learning-python",
+    raw: "(test)",
+    frontmatter: fm,
+    scenario: parsed.success ? parsed.data : null,
+    schemaError: parsed.success ? null : parsed.error.issues.map((i) => i.message).join("; "),
+    sections: {},
+    files: {
+      "workspace/main.py": "def main():\n    pass\n",
+      "workspace/data/train.csv": "feature,label\n1,0\n",
+      "tests/step-1.test.py": "def test_placeholder():\n    assert True\n",
+      "solution/step-1/main.py": "def main():\n    return 1\n",
       ...overrides.files,
     },
   };
@@ -311,6 +369,111 @@ describe("execution metadata validation", () => {
   });
 });
 
+describe("execution.artifacts.metrics config validation (JSON Pointer requiredPaths/expectedTypes/assertions)", () => {
+  it("is a no-op when execution.artifacts.metrics is not set at all (the overwhelming majority of scenarios)", () => {
+    expect(codes(validateExecution(bundle()))).not.toEqual(
+      expect.arrayContaining([expect.stringMatching(/^execution\/metrics-/)]),
+    );
+  });
+
+  it("accepts a well-formed config with JSON Pointer requiredPaths/expectedTypes/assertions", () => {
+    const b = bundle({
+      frontmatter: {
+        execution: {
+          mode: "single",
+          artifacts: {
+            metrics: {
+              required: true,
+              requiredPaths: ["/summary/accuracy", "/confusion_matrix"],
+              expectedTypes: { "/summary/accuracy": "number", "/confusion_matrix": "array" },
+              assertions: [{ path: "/summary/f1", type: "number", minimum: 0.5, maximum: 1 }],
+            },
+          },
+        },
+      },
+    });
+    expect(errors(validateExecution(b))).toEqual([]);
+  });
+
+  it("rejects an absolute metrics path", () => {
+    const b = bundle({ frontmatter: { execution: { mode: "single", artifacts: { metrics: { path: "/etc/metrics.json" } } } } });
+    expect(codes(validateExecution(b))).toContain("execution/metrics-path-unsafe");
+  });
+
+  it("rejects a traversing metrics path", () => {
+    const b = bundle({ frontmatter: { execution: { mode: "single", artifacts: { metrics: { path: "../outside/metrics.json" } } } } });
+    expect(codes(validateExecution(b))).toContain("execution/metrics-path-unsafe");
+  });
+
+  it("rejects a requiredPaths entry that is not a valid JSON Pointer (missing leading slash)", () => {
+    const b = bundle({
+      frontmatter: { execution: { mode: "single", artifacts: { metrics: { requiredPaths: ["summary.accuracy"] } } } },
+    });
+    expect(codes(validateExecution(b))).toContain("execution/metrics-invalid-path");
+  });
+
+  it("rejects a duplicate requiredPaths entry", () => {
+    const b = bundle({
+      frontmatter: {
+        execution: { mode: "single", artifacts: { metrics: { requiredPaths: ["/accuracy", "/accuracy"] } } },
+      },
+    });
+    expect(codes(validateExecution(b))).toContain("execution/metrics-duplicate-required-key");
+  });
+
+  it("rejects an expectedTypes key that is not a valid JSON Pointer", () => {
+    const b = bundle({
+      frontmatter: { execution: { mode: "single", artifacts: { metrics: { expectedTypes: { accuracy: "number" } } } } },
+    });
+    expect(codes(validateExecution(b))).toContain("execution/metrics-invalid-path");
+  });
+
+  it("rejects an assertion with an invalid JSON Pointer path", () => {
+    const b = bundle({
+      frontmatter: {
+        execution: { mode: "single", artifacts: { metrics: { assertions: [{ path: "not-a-pointer", minimum: 0 }] } } },
+      },
+    });
+    expect(codes(validateExecution(b))).toContain("execution/metrics-invalid-path");
+  });
+
+  it("rejects an assertion where minimum > maximum", () => {
+    const b = bundle({
+      frontmatter: {
+        execution: {
+          mode: "single",
+          artifacts: { metrics: { assertions: [{ path: "/f1", minimum: 0.9, maximum: 0.1 }] } },
+        },
+      },
+    });
+    expect(codes(validateExecution(b))).toContain("execution/metrics-invalid-assertion-bounds");
+  });
+
+  it("rejects an assertion where minItems > maxItems", () => {
+    const b = bundle({
+      frontmatter: {
+        execution: {
+          mode: "single",
+          artifacts: { metrics: { assertions: [{ path: "/scores", minItems: 10, maxItems: 2 }] } },
+        },
+      },
+    });
+    expect(codes(validateExecution(b))).toContain("execution/metrics-invalid-assertion-bounds");
+  });
+
+  it("rejects too many requiredPaths entries (reasonable configuration size)", () => {
+    const requiredPaths = Array.from({ length: 51 }, (_, i) => `/m${i}`);
+    const b = bundle({ frontmatter: { execution: { mode: "single", artifacts: { metrics: { requiredPaths } } } } });
+    expect(codes(validateExecution(b))).toContain("execution/metrics-too-many-required-keys");
+  });
+
+  it("rejects too many assertions entries (reasonable configuration size)", () => {
+    const assertions = Array.from({ length: 51 }, (_, i) => ({ path: `/m${i}`, minimum: 0 }));
+    const b = bundle({ frontmatter: { execution: { mode: "single", artifacts: { metrics: { assertions } } } } });
+    expect(codes(validateExecution(b))).toContain("execution/metrics-too-many-assertions");
+  });
+});
+
 describe("workspace validation", () => {
   it("reports a missing declared file", () => {
     const b = bundle({ files: {} }); // baseFiles overridden to nothing → workspace/Widget.tsx missing
@@ -398,6 +561,127 @@ describe("fullstack contract validation", () => {
     expect(c).toContain("fullstack/missing-backend-tests");
     expect(c).toContain("fullstack/missing-integration-tests");
     expect(c).toContain("fullstack/checkpoint-missing-side");
+  });
+});
+
+describe("machine learning metadata schema", () => {
+  it("accepts valid machine-learning frontmatter", () => {
+    const b = mlBundle();
+    expect(b.scenario).not.toBeNull();
+    expect(b.scenario?.type).toBe("machine-learning");
+    expect(b.scenario?.execution?.mode).toBe("python-ml");
+  });
+
+  it("rejects machine-learning frontmatter that doesn't declare execution.mode: python-ml", () => {
+    const b = mlBundle({ frontmatter: { execution: { mode: "single" } } });
+    expect(b.scenario).toBeNull();
+  });
+
+  it("rejects machine-learning frontmatter with a non-python runtime", () => {
+    const b = mlBundle({ frontmatter: { runtime: "node" } });
+    expect(b.scenario).toBeNull();
+  });
+
+  it("rejects machine-learning frontmatter whose entry isn't main.py", () => {
+    const b = mlBundle({
+      frontmatter: {
+        workspace: {
+          files: [
+            { path: "run.py", role: "edit" },
+            { path: "data/train.csv", role: "readonly" },
+          ],
+          entry: "run.py",
+        },
+      },
+    });
+    expect(b.scenario).toBeNull();
+  });
+
+  it("rejects execution.mode: python-ml on a non-machine-learning type", () => {
+    const b = mlBundle({ frontmatter: { type: "backend" } });
+    expect(b.scenario).toBeNull();
+  });
+
+  it("does not require functionName for an ML step using the python harness (script-based, not function-call-based)", () => {
+    const b = mlBundle({
+      frontmatter: {
+        steps: [
+          {
+            id: "step-1",
+            kind: "implement",
+            prompt: "Train a baseline model.",
+            verification: "automated-tests",
+            verify: { harness: "python", tests: ["tests/step-1.test.py"] },
+            weight: 100,
+            checkpoint: { files: ["solution/step-1/main.py"] },
+          },
+        ],
+      },
+    });
+    expect(b.scenario).not.toBeNull();
+  });
+
+  it("still requires functionName for a non-ML scenario using the python harness", () => {
+    const b = bundle({
+      frontmatter: {
+        stack: { languages: ["python"], harness: "python" },
+        steps: [
+          {
+            id: "build",
+            kind: "implement",
+            prompt: "Build it.",
+            verification: "automated-tests",
+            verify: { harness: "python", tests: ["tests/build.test.py"] },
+            weight: 100,
+          },
+        ],
+      },
+    });
+    expect(b.scenario).toBeNull();
+  });
+});
+
+describe("machine learning contract validation", () => {
+  it("accepts the required workspace, dataset, tests, and solution checkpoint", () => {
+    const b = mlBundle();
+    expect(b.scenario).not.toBeNull();
+    const ds = [
+      ...validateFrontmatter(b),
+      ...validateWorkspace(b),
+      ...validateMachineLearningContract(b),
+      ...validateSteps(b),
+      ...validateRubric(b),
+    ];
+    expect(errors(ds)).toEqual([]);
+  });
+
+  it("does not affect non-machine-learning scenarios", () => {
+    expect(validateMachineLearningContract(bundle())).toEqual([]);
+    expect(validateMachineLearningContract(fullstackBundle())).toEqual([]);
+  });
+
+  it("flags a missing workspace/main.py entrypoint", () => {
+    const b = mlBundle();
+    delete b.files["workspace/main.py"];
+    expect(codes(validateMachineLearningContract(b))).toContain("ml/missing-entrypoint");
+  });
+
+  it("flags a missing workspace/data/ folder", () => {
+    const b = mlBundle();
+    delete b.files["workspace/data/train.csv"];
+    expect(codes(validateMachineLearningContract(b))).toContain("ml/missing-data");
+  });
+
+  it("flags a missing per-step solution checkpoint", () => {
+    const b = mlBundle();
+    delete b.files["solution/step-1/main.py"];
+    expect(codes(validateMachineLearningContract(b))).toContain("ml/missing-step-solution");
+  });
+
+  it("flags a missing per-step test file", () => {
+    const b = mlBundle();
+    delete b.files["tests/step-1.test.py"];
+    expect(codes(validateMachineLearningContract(b))).toContain("ml/missing-step-test");
   });
 });
 

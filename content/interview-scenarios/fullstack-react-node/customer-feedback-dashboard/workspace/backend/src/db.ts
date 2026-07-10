@@ -44,6 +44,7 @@ const SEED_FEEDBACK = [
 
 let sqlModule: Awaited<ReturnType<typeof initSqlJs>> | null = null;
 let database: initSqlJs.Database | null = null;
+let seededDatabaseBytes: Uint8Array | null = null;
 
 async function getSqlModule() {
   sqlModule ??= await initSqlJs();
@@ -62,38 +63,47 @@ function rowsFromStatement<T>(statement: initSqlJs.Statement): T[] {
 
 export async function resetDatabase() {
   const SQL = await getSqlModule();
-  database = new SQL.Database();
-  database.run(`
-    CREATE TABLE feedback (
-      id INTEGER PRIMARY KEY,
-      customer_name TEXT NOT NULL,
-      message TEXT NOT NULL,
-      status TEXT NOT NULL,
-      response TEXT,
-      created_at TEXT NOT NULL,
-      updated_at TEXT NOT NULL
-    );
-  `);
+  if (!seededDatabaseBytes) {
+    const seeded = new SQL.Database();
+    seeded.run(`
+      CREATE TABLE feedback (
+        id INTEGER PRIMARY KEY,
+        customer_name TEXT NOT NULL,
+        message TEXT NOT NULL,
+        status TEXT NOT NULL,
+        response TEXT,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL
+      );
+    `);
 
-  const insert = database.prepare(`
-    INSERT INTO feedback (id, customer_name, message, status, response, created_at, updated_at)
-    VALUES (?, ?, ?, ?, ?, ?, ?)
-  `);
-  try {
-    for (const item of SEED_FEEDBACK) {
-      insert.run([
-        item.id,
-        item.customer_name,
-        item.message,
-        item.status,
-        item.response,
-        item.created_at,
-        item.updated_at,
-      ]);
+    const insert = seeded.prepare(`
+      INSERT INTO feedback (id, customer_name, message, status, response, created_at, updated_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?)
+    `);
+    try {
+      seeded.run("BEGIN");
+      for (const item of SEED_FEEDBACK) {
+        insert.run([
+          item.id,
+          item.customer_name,
+          item.message,
+          item.status,
+          item.response,
+          item.created_at,
+          item.updated_at,
+        ]);
+      }
+      seeded.run("COMMIT");
+      seededDatabaseBytes = seeded.export();
+    } finally {
+      insert.free();
+      seeded.close();
     }
-  } finally {
-    insert.free();
   }
+
+  database?.close();
+  database = new SQL.Database(seededDatabaseBytes.slice());
 }
 
 export async function getDatabase() {
