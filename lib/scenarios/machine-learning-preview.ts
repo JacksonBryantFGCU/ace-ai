@@ -102,8 +102,10 @@ export const ML_PREVIEW_MAX_TOTAL_BYTES = 5_000_000; // 5 MB across every return
 /** Root-level filenames candidate scripts are expected to generate. Anything
  *  under `outputs/` is also treated as a generated artifact. This allowlist
  *  (not "every new file") is what keeps preview from ever surfacing stray
- *  `__pycache__`/etc noise as an "artifact". */
-const ROOT_ARTIFACT_NAMES = new Set(["predictions.csv", "metrics.json", "report.txt"]);
+ *  `__pycache__`/etc noise as an "artifact". `predictions.csv`/`forecasts.csv`
+ *  cover the two primary-output-CSV names used across current scenarios
+ *  (classification/regression vs. forecasting). */
+const ROOT_ARTIFACT_NAMES = new Set(["predictions.csv", "forecasts.csv", "metrics.json", "report.txt"]);
 
 /** Hidden/system files (any path segment starting with ".", e.g. `.DS_Store`,
  *  an `outputs/.gitkeep`) are never artifacts, even if otherwise allowlisted. */
