@@ -23,6 +23,11 @@ const eslintConfig = defineConfig([
     // They are transpiled by the engine at runtime and gated by `scenario:check`,
     // not the app's lint/typecheck. (Mirrors the `content` tsconfig exclude.)
     "content/**",
+    // Behavioral-equivalence test fixtures: alternative/lookalike candidate
+    // workspace source used only as fixture content in tests, same rationale
+    // as the `content/**` scenario exclude above.
+    "server/scenarios/fixtures/**",
+    "server/scenarios/__fixtures__/**",
     // Generated: embedded React/csstype type declarations for Monaco.
     "lib/monaco/generated-libs.ts",
   ]),

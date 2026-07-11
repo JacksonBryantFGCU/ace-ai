@@ -115,4 +115,20 @@ describe("parseScenario", () => {
     );
     expect(() => parseScenario(broken)).toThrow(/must declare tests/);
   });
+
+  it("parses an explicit scenario-level taskType", () => {
+    const withTaskType = VALID.replace("status: draft", "status: draft\ntaskType: debug");
+    const { scenario } = parseScenario(withTaskType);
+    expect(scenario.taskType).toBe("debug");
+  });
+
+  it("leaves taskType undefined when omitted (backward compatible)", () => {
+    const { scenario } = parseScenario(VALID);
+    expect(scenario.taskType).toBeUndefined();
+  });
+
+  it("rejects an invalid taskType value", () => {
+    const broken = VALID.replace("status: draft", "status: draft\ntaskType: invalid-kind");
+    expect(() => parseScenario(broken)).toThrow();
+  });
 });

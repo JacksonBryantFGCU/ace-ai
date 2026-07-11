@@ -1,7 +1,6 @@
 import { loadAuthoredBundleBySlug } from "@/server/scenarios/authoring";
 import { loadScenario } from "@/server/scenarios/load";
 import { startFullstackRuntime } from "@/server/scenarios/fullstack-runtime";
-import { checkpointSource } from "@/server/scenarios/checkpoint-source";
 import {
   verifyFullstackScenarioStep,
   type FullstackStepVerificationDependencies,
@@ -193,7 +192,6 @@ export async function verifyScenarioStep(input: {
         return startFullstackRuntime(runtimeLoaded, { ...options, purpose: "verification" });
       },
       resetRuntime,
-      resolveCheckpointFiles: (scenarioSlug, stepId) => checkpointSource.resolve(scenarioSlug, stepId),
       async runTestFile({ layer, testFile, runtime }) {
         return runTestFile({ layer, testFile, runtime });
       },

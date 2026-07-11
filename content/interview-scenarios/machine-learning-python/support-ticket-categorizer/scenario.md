@@ -109,7 +109,7 @@ steps:
       - "evaluate_model must never leak category into the features it scores against - only compare predictions to the y you already split out."
   - id: generate-predictions
     kind: implement
-    prompt: "Implement predict_categories and save_predictions in src/ticket_pipeline.py, then finish main.py so `python main.py` trains the model, predicts the category for every row of data/test.csv, and writes predictions.csv (columns ticket_id,predicted_category, one row per test ticket, in the same order as test.csv) next to main.py."
+    prompt: "Implement predict_categories and save_predictions in src/ticket_pipeline.py, then finish main.py so `python main.py` trains the model, predicts the category for every row of data/test.csv, writes predictions.csv (columns ticket_id,predicted_category, one row per test ticket, in the same order as test.csv), writes metrics.json (keys accuracy, macro_f1, train_rows, test_rows, model), and writes report.txt (a human-readable summary beginning with the heading 'Support Ticket Categorizer Report' and including the training/test row counts) next to main.py."
     verification: automated-tests
     verify: { harness: python, tests: [tests/step-3.test.py] }
     weight: 35
@@ -117,6 +117,7 @@ steps:
     hints:
       - "Fit prepare_features once on the combined training text and transform the combined test text with the SAME call, so train/validation/test features always share one vocabulary - no reindexing needed like with fixed categorical columns."
       - "predict_categories should just return model.predict(X_test) as a plain list of category strings."
+      - "report.txt just needs to start with the literal line 'Support Ticket Categorizer Report' and mention the training/test row counts (e.g. 'Training rows: N' / 'Test rows: N') - the rest of the format is up to you."
       - "save_predictions should write with pandas.DataFrame(...).to_csv(path, index=False) so the header and row order come out exactly right."
 ---
 

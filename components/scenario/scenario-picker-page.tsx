@@ -18,6 +18,7 @@ import {
   sortCatalogScenarios,
 } from "@/lib/scenarios/scenario-catalog";
 import { noScenarioMessage, scenarioRoleFamily } from "@/lib/scenarios/selection/roles";
+import { scenarioTaskTypeOf } from "@/lib/scenarios/scenario-task-type";
 import type { ScenarioPickerOption } from "@/lib/scenarios/types";
 import type { VapiInterviewConfig } from "@/types/interview";
 
@@ -272,6 +273,7 @@ function ScenarioDetails({
           <Chip className={DIFFICULTY_STYLE[scenario.difficulty]}>{scenario.difficulty}</Chip>
           <Chip>{category}</Chip>
           <Chip>{scenario.estimatedMinutes} min</Chip>
+          <Chip>{titleCase(scenarioTaskTypeOf({ steps: scenario.stepPreview }))}</Chip>
         </div>
 
         <section className="mt-5">

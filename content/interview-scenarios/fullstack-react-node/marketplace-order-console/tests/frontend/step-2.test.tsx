@@ -25,9 +25,8 @@ describe("frontend step 2", () => {
     await user.selectOptions(screen.getByLabelText("Status"), "fulfilled");
 
     await waitFor(() => expect(within(orderList).getAllByRole("button").length).toBeLessThan(total));
-    for (const badge of within(orderList).getAllByText("Fulfilled")) {
-      expect(badge.className).toContain("status-fulfilled");
-    }
+    expect(within(orderList).getAllByText("Fulfilled").length).toBeGreaterThan(0);
+    expect(within(orderList).queryAllByText(/^(Pending|Cancelled)$/).length).toBe(0);
   });
 
   it("creates a valid order through the backend and adds it to the list", async () => {

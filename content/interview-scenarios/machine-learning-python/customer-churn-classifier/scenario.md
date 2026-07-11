@@ -105,7 +105,7 @@ steps:
       - "evaluate_model must never leak churned into the features it scores against - only compare predictions to the y you already split out."
   - id: generate-predictions
     kind: implement
-    prompt: "Implement predict_churn and save_predictions in src/churn_pipeline.py, then finish main.py so `python main.py` trains the model, predicts churn for every row of data/test.csv, and writes predictions.csv (columns customer_id,churn_prediction, one row per test customer, in the same order as test.csv) next to main.py."
+    prompt: "Implement predict_churn and save_predictions in src/churn_pipeline.py, then finish main.py so `python main.py` trains the model, predicts churn for every row of data/test.csv, writes predictions.csv (columns customer_id,churn_prediction, one row per test customer, in the same order as test.csv), writes metrics.json (keys accuracy, f1, train_rows, test_rows, model), and writes report.txt (a human-readable summary beginning with the heading 'Customer Churn Classifier Report' and including the training/test row counts) next to main.py."
     verification: automated-tests
     verify: { harness: python, tests: [tests/step-3.test.py] }
     weight: 35
@@ -113,6 +113,7 @@ steps:
     hints:
       - "Build the test feature matrix the same way as the training features, then reindex it to the training features' columns (fill_value=0) before predicting - this guards against any last column mismatch."
       - "predict_churn should just return model.predict(X_test) as plain ints (0 or 1)."
+      - "report.txt just needs to start with the literal line 'Customer Churn Classifier Report' and mention the training/test row counts (e.g. 'Training rows: N' / 'Test rows: N') - the rest of the format is up to you."
       - "save_predictions should write with pandas.DataFrame(...).to_csv(path, index=False) so the header and row order come out exactly right."
 ---
 

@@ -136,6 +136,12 @@ export const scenarioSchema = z
     status: z.enum(["draft", "review", "verified"]),
     visibility: z.enum(SCENARIO_VISIBILITIES).optional(),
     type: z.enum(SCENARIO_TYPES).optional(),
+    // Scenario-level dominant task type (additive, optional). When omitted,
+    // consumers derive it from `steps[].kind` — see scenarioTaskTypeOf() in
+    // lib/scenarios/scenario-task-type.ts. Mirrors STEP_KINDS so a scenario
+    // can declare "this interview is primarily a debug exercise" without
+    // requiring every existing scenario.md to be touched.
+    taskType: z.enum(STEP_KINDS).optional(),
     frontend: z
       .object({
         framework: z.string().min(1),

@@ -105,7 +105,7 @@ steps:
       - "evaluate_model must never leak species into the features it scores against - only compare predictions to the y you already split out."
   - id: generate-predictions
     kind: implement
-    prompt: "Implement predict_species and save_predictions in src/iris_pipeline.py, then finish main.py so `python main.py` trains the model, predicts the species for every row of data/test.csv, and writes predictions.csv (columns sample_id,predicted_species, one row per test sample, in the same order as test.csv) next to main.py."
+    prompt: "Implement predict_species and save_predictions in src/iris_pipeline.py, then finish main.py so `python main.py` trains the model, predicts the species for every row of data/test.csv, writes predictions.csv (columns sample_id,predicted_species, one row per test sample, in the same order as test.csv), writes metrics.json (keys accuracy, train_rows, test_rows, model), and writes report.txt (a human-readable summary beginning with the heading 'Iris Species Classifier Report' and including the training/test row counts) next to main.py."
     verification: automated-tests
     verify: { harness: python, tests: [tests/step-3.test.py] }
     weight: 35
@@ -114,6 +114,7 @@ steps:
       - "Build the test feature matrix the same way as the training features, then reindex it to the training features' columns (fill_value=0) before predicting - this guards against any last column mismatch."
       - "predict_species should just return model.predict(X_test) as a plain list of species strings."
       - "save_predictions should write with pandas.DataFrame(...).to_csv(path, index=False) so the header and row order come out exactly right."
+      - "report.txt just needs to start with the literal line 'Iris Species Classifier Report' and mention the training/test row counts (e.g. 'Training rows: N' / 'Test rows: N') - the rest of the format is up to you."
 ---
 
 ## Overview

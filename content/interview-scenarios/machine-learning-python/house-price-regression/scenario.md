@@ -108,7 +108,7 @@ steps:
       - "evaluate_model must never leak price into the features it scores against - only compare predictions to the y you already split out."
   - id: generate-predictions
     kind: implement
-    prompt: "Implement predict_prices and save_predictions in src/price_pipeline.py, then finish main.py so `python main.py` trains the model, predicts the price for every row of data/test.csv, and writes predictions.csv (columns home_id,predicted_price, one row per test home, in the same order as test.csv) next to main.py."
+    prompt: "Implement predict_prices and save_predictions in src/price_pipeline.py, then finish main.py so `python main.py` trains the model, predicts the price for every row of data/test.csv, writes predictions.csv (columns home_id,predicted_price, one row per test home, in the same order as test.csv), writes metrics.json (keys mae, r2, train_rows, test_rows, model), and writes report.txt (a human-readable summary beginning with the heading 'House Price Regression Report' and including the training/test row counts) next to main.py."
     verification: automated-tests
     verify: { harness: python, tests: [tests/step-3.test.py] }
     weight: 35
@@ -117,6 +117,7 @@ steps:
       - "Build the test feature matrix the same way as the training features, then reindex it to the training features' columns (fill_value=0) before predicting - this guards against any last column mismatch."
       - "predict_prices should return model.predict(X_test) rounded to the nearest integer dollar."
       - "save_predictions should write with pandas.DataFrame(...).to_csv(path, index=False) so the header and row order come out exactly right."
+      - "report.txt just needs to start with the literal line 'House Price Regression Report' and mention the training/test row counts (e.g. 'Training rows: N' / 'Test rows: N') - the rest of the format is up to you."
 ---
 
 ## Overview

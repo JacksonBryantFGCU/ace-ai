@@ -1,0 +1,203 @@
+// INTEGRATION-BROKEN fixture backend for event-rsvp-manager step 2
+// (filter-and-create-rsvp).
+//
+// Same rough shape as the reference solution/step-2/backend/src/app.ts —
+// same routes, same validation order, same status codes — with ONE
+// deliberate contract bug: the created RSVP is serialized with camelCase
+// attendee fields (`attendeeName` / `attendeeEmail`) instead of the
+// contracted snake_case (`attendee_name` / `attendee_email`) documented in
+// scenario.md and consumed by the (untouched) frontend `api.ts` types and by
+// `App.tsx`, which renders `rsvp.attendee_name`. Every other field and
+// status code matches the reference exactly, so this looks right until the
+// frontend and backend are exercised together.
+
+import express from "express";
+import {
+  EVENT_STATUSES,
+  countActiveRsvpForEmail,
+  createRsvp,
+  getEventWithCountsById,
+  listEvents,
+  listRsvpsForEvent,
+  resetDatabase,
+  type EventStatus,
+  type EventWithCounts,
+} from "./db";
+
+interface EventSummary extends EventWithCounts {
+  spots_remaining: number;
+  is_full: boolean;
+}
+
+function toEventSummary(row: EventWithCounts): EventSummary {
+  return {
+    ...row,
+    spots_remaining: Math.max(row.capacity - row.going_count, 0),
+    is_full: row.going_count >= row.capacity,
+  };
+}
+
+const VALID_EVENT_STATUSES = new Set<EventStatus>(EVENT_STATUSES);
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+function parseId(value: string): number | null {
+  const id = Number(value);
+  return Number.isInteger(id) && id > 0 ? id : null;
+}
+
+function parseEventStatus(value: unknown): EventStatus | null {
+  return typeof value === "string" && VALID_EVENT_STATUSES.has(value as EventStatus)
+    ? (value as EventStatus)
+    : null;
+}
+
+// BUG: the RSVP response is re-shaped to camelCase attendee fields here. The
+// rest of the app (and the frontend) still expects attendee_name /
+// attendee_email.
+function serializeRsvpForResponse(rsvp: {
+  id: number;
+  event_id: number;
+  attendee_name: string;
+  attendee_email: string;
+  status: string;
+  created_at: string;
+  updated_at: string;
+}) {
+  return {
+    id: rsvp.id,
+    event_id: rsvp.event_id,
+    attendeeName: rsvp.attendee_name,
+    attendeeEmail: rsvp.attendee_email,
+    status: rsvp.status,
+    created_at: rsvp.created_at,
+    updated_at: rsvp.updated_at,
+  };
+}
+
+const app = express();
+
+app.use(express.json());
+app.use((req, res, next) => {
+  res.setHeader("Access-Control-Allow-Origin", "*");
+  res.setHeader("Access-Control-Allow-Headers", "Content-Type");
+  res.setHeader("Access-Control-Allow-Methods", "GET,POST,PATCH,OPTIONS");
+  if (req.method === "OPTIONS") {
+    res.sendStatus(204);
+    return;
+  }
+  next();
+});
+
+app.get("/health", (_req, res) => {
+  res.json({ ok: true });
+});
+
+app.post("/__test/reset", async (_req, res) => {
+  if (process.env.NODE_ENV !== "test") {
+    res.status(404).json({ error: "Not found" });
+    return;
+  }
+  await resetDatabase();
+  res.json({ ok: true });
+});
+
+app.get("/events", async (req, res) => {
+  const statusParam = req.query.status;
+  if (Array.isArray(statusParam)) {
+    res.status(400).json({ error: "Invalid event status" });
+    return;
+  }
+  const status = statusParam === undefined ? undefined : parseEventStatus(statusParam);
+  if (statusParam !== undefined && !status) {
+    res.status(400).json({ error: "Invalid event status" });
+    return;
+  }
+
+  const availabilityParam = req.query.availability;
+  if (Array.isArray(availabilityParam)) {
+    res.status(400).json({ error: "Invalid availability filter" });
+    return;
+  }
+  let availability: "open" | "full" | undefined;
+  if (availabilityParam !== undefined) {
+    if (availabilityParam !== "open" && availabilityParam !== "full") {
+      res.status(400).json({ error: "Invalid availability filter" });
+      return;
+    }
+    availability = availabilityParam;
+  }
+
+  const events = (await listEvents({ status, availability })).map(toEventSummary);
+  res.json({ events });
+});
+
+app.get("/events/:id", async (req, res) => {
+  const id = parseId(req.params.id);
+  if (!id) {
+    res.status(400).json({ error: "Invalid event id" });
+    return;
+  }
+
+  const event = await getEventWithCountsById(id);
+  if (!event) {
+    res.status(404).json({ error: "Event not found" });
+    return;
+  }
+
+  const rsvps = await listRsvpsForEvent(id);
+  res.json({ event: { ...toEventSummary(event), rsvps } });
+});
+
+app.post("/events/:id/rsvps", async (req, res) => {
+  const id = parseId(req.params.id);
+  if (!id) {
+    res.status(400).json({ error: "Invalid event id" });
+    return;
+  }
+
+  const event = await getEventWithCountsById(id);
+  if (!event) {
+    res.status(404).json({ error: "Event not found" });
+    return;
+  }
+
+  if (event.status !== "scheduled") {
+    res.status(400).json({ error: "Event is not accepting RSVPs" });
+    return;
+  }
+
+  const rawName = req.body?.attendee_name;
+  const attendeeName = typeof rawName === "string" ? rawName.trim() : "";
+  if (!attendeeName) {
+    res.status(400).json({ error: "Attendee name is required" });
+    return;
+  }
+
+  const rawEmail = req.body?.attendee_email;
+  const attendeeEmail = typeof rawEmail === "string" ? rawEmail.trim().toLowerCase() : "";
+  if (!EMAIL_RE.test(attendeeEmail)) {
+    res.status(400).json({ error: "Invalid attendee email" });
+    return;
+  }
+
+  const activeCount = await countActiveRsvpForEmail(id, attendeeEmail);
+  if (activeCount > 0) {
+    res.status(409).json({ error: "Attendee already RSVP'd" });
+    return;
+  }
+
+  const status = event.going_count < event.capacity ? "going" : "waitlisted";
+  const rsvp = await createRsvp({
+    event_id: id,
+    attendee_name: attendeeName,
+    attendee_email: attendeeEmail,
+    status,
+    created_at: new Date().toISOString(),
+  });
+
+  const updatedEvent = await getEventWithCountsById(id);
+  // BUG: response uses the camelCase serializer instead of returning `rsvp` as-is.
+  res.status(201).json({ rsvp: serializeRsvpForResponse(rsvp), event: toEventSummary(updatedEvent!) });
+});
+
+export default app;

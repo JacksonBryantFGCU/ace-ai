@@ -30,5 +30,11 @@
     ".next/dev/types/**/*.ts",
     "**/*.mts"
   ],
-  "exclude": ["node_modules", "reference", "content"]
+  "exclude": [
+    "node_modules",
+    "reference",
+    "content",
+    "server/scenarios/fixtures",
+    "server/scenarios/__fixtures__"
+  ]
 }

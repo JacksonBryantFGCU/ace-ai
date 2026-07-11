@@ -6,7 +6,7 @@ import {
 } from "@/lib/scenarios/fullstack-step-verification";
 import type { FullstackAuthoredTestFile } from "@/lib/scenarios/fullstack-test-runner";
 import type { FullstackRuntimeHandle } from "@/lib/scenarios/fullstack-runtime";
-import type { CheckpointFile, LoadedScenario, ServedWorkspaceFile } from "@/lib/scenarios/types";
+import type { LoadedScenario, ServedWorkspaceFile } from "@/lib/scenarios/types";
 
 function loaded(): LoadedScenario {
   return {
@@ -78,33 +78,17 @@ function runtime(stopped: string[]): FullstackRuntimeHandle {
   };
 }
 
-const STEP_SOLUTIONS: Record<string, CheckpointFile[]> = {
-  "step-1": [
-    { path: "backend/src/app.ts", content: "step-1-backend" },
-    { path: "frontend/src/App.tsx", content: "step-1-frontend" },
-  ],
-  "step-2": [
-    { path: "backend/src/app.ts", content: "step-2-backend" },
-    { path: "frontend/src/App.tsx", content: "step-2-frontend" },
-  ],
-  "step-3": [
-    { path: "backend/src/app.ts", content: "step-3-backend" },
-    { path: "frontend/src/App.tsx", content: "step-3-frontend" },
-  ],
-};
-
-function filesForStep(stepId: string): CheckpointFile[] {
-  return STEP_SOLUTIONS[stepId] ?? [];
-}
-
+/**
+ * A candidate implementation that differs from any reference solution in
+ * naming/formatting/structure — grading must not care, only the authored
+ * backend/frontend/integration tests (mocked here via `runTestFile`) do.
+ */
 function candidateFilesForStep(stepId: string): ServedWorkspaceFile[] {
   const files = new Map(loaded().files.map((file) => [file.path, { ...file }]));
-  for (const checkpointFile of filesForStep(stepId)) {
-    const existing = files.get(checkpointFile.path);
-    if (existing) {
-      existing.content = checkpointFile.content;
-      files.set(checkpointFile.path, existing);
-    }
+  for (const path of files.keys()) {
+    const existing = files.get(path)!;
+    existing.content = `${existing.content}\n// candidate rewrite for ${stepId}, different from any reference solution`;
+    files.set(path, existing);
   }
   return [...files.values()];
 }
@@ -118,7 +102,6 @@ function deps() {
     resetRuntime: vi.fn(async () => {
       resets.push("reset");
     }),
-    resolveCheckpointFiles: vi.fn(async (_slug, stepId) => filesForStep(stepId)),
     runTestFile: vi.fn(async ({ layer, testFile }) => {
       calls.push(testFile.path);
       return {
@@ -156,18 +139,18 @@ describe("selectStepScopedTestFiles", () => {
 });
 
 describe("verifyFullstackScenarioStep", () => {
-  it("fails when the workspace still matches the starter files instead of the checkpoint solution", async () => {
+  it("passes an alternative candidate implementation that never matches any reference solution, as long as the authored tests pass", async () => {
     const { dependencies } = deps();
-    const result = await verifyFullstackScenarioStep(loaded(), tests, dependencies, { stepIndex: 0 });
-
-    expect(result.passed).toBe(false);
-    expect(result.groups?.find((group) => group.name === "workspace")).toMatchObject({
-      ok: false,
-      reason: expect.stringContaining("Workspace does not match the authored checkpoint solution"),
+    const result = await verifyFullstackScenarioStep(loaded(), tests, dependencies, {
+      stepIndex: 0,
+      files: candidateFilesForStep("step-1"),
     });
+
+    expect(result.passed).toBe(true);
+    expect(result.groups?.some((group) => group.name === "workspace")).toBe(false);
   });
 
-  it("skips missing frontend tests without failing the whole verification when the checkpoint matches", async () => {
+  it("skips missing frontend tests without failing the whole verification", async () => {
     const { dependencies } = deps();
     const result = await verifyFullstackScenarioStep(
       loaded(),
@@ -178,11 +161,29 @@ describe("verifyFullstackScenarioStep", () => {
 
     expect(result.passed).toBe(true);
     expect(result.groups?.map((group) => [group.name, group.ok, group.skipped])).toEqual([
-      ["workspace", true, undefined],
       ["backend", true, undefined],
       ["frontend", true, true],
       ["integration", true, undefined],
     ]);
+  });
+
+  it("fails a candidate whose backend response/persistence behavior is actually broken, even though its files superficially resemble the reference structure", async () => {
+    const { dependencies } = deps();
+    vi.mocked(dependencies.runTestFile).mockImplementation(async ({ layer, testFile }) => ({
+      layer,
+      status: layer === "backend" ? ("failed" as const) : ("passed" as const),
+      durationMs: 5,
+      command: `npm test -- ${testFile.path}`,
+      stderr: layer === "backend" ? "expected 201, got 500" : "",
+    }));
+
+    const result = await verifyFullstackScenarioStep(loaded(), tests, dependencies, {
+      stepIndex: 0,
+      files: candidateFilesForStep("step-1"),
+    });
+
+    expect(result.passed).toBe(false);
+    expect(result.groups?.find((group) => group.name === "backend")).toMatchObject({ ok: false });
   });
 
   it("fails when required integration step tests are missing", async () => {

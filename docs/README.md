@@ -68,6 +68,74 @@ The picker rules are:
 - Full-Stack Engineer: frontend and backend scenarios, ranked by best match
 - Playground: all public scenarios by default
 
+## Candidate Verification Policy
+
+**Core principle:** candidate solutions are evaluated against the public contract and behavioral requirements documented in `scenario.md`, not against the source code of the reference solution (`solution/`). The reference solution is executed only to prove a scenario is solvable (see `npm run scenario:validate`) — it is never diffed, hashed, or compared against candidate files, and candidate verification never reads `solution/` at grading time. `solution/` (checkpoint) files are only ever served to the *candidate*, on request, through the separate "reveal solution" recovery action (`fetchCheckpoint` in `actions/scenario.ts`) — never read back into the grading path.
+
+**Fixed during this audit:** `lib/scenarios/fullstack-step-verification.ts` previously resolved every prior-step-through-current-step reference-solution checkpoint (`buildExpectedWorkspace`/`resolveCheckpointFiles`, `i <= stepIndex` — i.e. including the step actually being graded) and exact-string-compared it against the candidate's submitted workspace (`compareWorkspaceFiles`/`fileSignature`) *before* running any authored backend/frontend/integration test — failing the whole step immediately, tests unrun, on any byte-level difference (different formatting, naming, route order, ...). This was a real reference-source-comparison gate in the live grading path for every `fullstack-react-node` scenario, not a dormant or authoring-only code path. It has been removed; fullstack step grading now runs the same way backend/frontend/ML grading already did — authored tests against whatever the candidate submitted, nothing else.
+
+Verification is black-box and behavioral per role:
+
+| Role | Mechanism |
+|---|---|
+| Frontend | React Testing Library queries (`getByRole`, `getByLabelText`, `getByText`) against the rendered candidate component — accessibility-tree driven, not DOM-structure driven. |
+| Backend | HTTP requests (supertest) against the candidate's exported app, plus database *state* assertions (row values/counts) — never assertions on the candidate's SQL text or ORM calls. |
+| Fullstack | The candidate's frontend and backend are actually run (spawned processes / dev servers) and probed the same way — real HTTP + real DOM, layered as backend/frontend/integration test suites. |
+| Machine Learning | The candidate's `main.py` is executed in a sandboxed container; tests assert on `metrics.json` (schema + threshold checks), `forecasts.csv`/`predictions.csv` contract (shape, row alignment, probability validity), and behavioral properties (e.g. feature mutation tests proving no target leakage) — never on the candidate's Python source text or a fixed reference prediction array. |
+
+### Valid exact constraints
+
+Exact checks are acceptable — and used — for public contract elements: required route paths and HTTP status codes, exported module/app names, required file names (`main.py`, `metrics.json`, `forecasts.csv`), documented JSON paths and artifact column names/order, documented accessible labels/roles, and deterministic values derived from fixed input data (e.g. a calendar feature computed from a literal date). ML metric *thresholds* are also exact numbers, but they're margin-calibrated against the reference's performance, not equality checks (see below).
+
+### Invalid accidental constraints
+
+Tests should not require a specific private helper name, local variable name, control-flow shape, CSS class (unless it's part of a documented public contract), exact SQL text, or exact floating-point metric/prediction value. When found, these are bugs — fix them, don't work around them. **Known fixed exception:** `retail-demand-forecaster/tests/step-3.test.py` previously asserted the literal string `"Retail Demand Forecaster Report"` inside `report.txt`; that heading was never part of the documented contract (`scenario.md` only requires the report to mention chronological validation, WMAPE, and baseline comparison), so it was accidental brittleness coupling candidates to the reference solution's exact wording. The assertion was narrowed to the documented required concepts only.
+
+### ML tolerance policy
+
+ML metric checks use threshold bands with real margin below the reference solution's measured performance (e.g. `retail-demand-forecaster` requires R²≥0.60 against a ~0.74 reference, WMAPE≤0.25 against ~0.18), not exact equality — see each scenario's `tests/step-N.test.py` for the calibrated values and the adversarial "naive baseline must fail" tests that prove the threshold isn't trivially satisfiable. Determinism checks (`pytest.approx(..., abs=1e-6)`) only verify the *candidate's own* repeated runs are reproducible, never that the candidate matches a fixed reference number. Where a scenario requires a specific technique (e.g. `Pipeline` + `ColumnTransformer` in `retail-demand-forecaster`, class-balance-aware metrics in imbalanced classification scenarios), that requirement is stated in `scenario.md`'s rubric/step prompts, and the corresponding `isinstance()`/structural check exists to enforce a documented requirement — not an incidental implementation detail.
+
+## Task Types
+
+Every step declares a `kind` (`lib/scenarios/schema.ts` `STEP_KINDS`): `implement`, `debug`, `refactor`, or `explain`. This is validated and enforced today — `explain` steps require `verification: rubric` + `harness: none` + no tests; the other three require an executable harness and tests. It's rendered consistently in the interview step header, scenario picker step preview, Authoring Studio step list, and the results/evaluation report.
+
+Scenarios do not currently declare a *dominant* type — only their steps do. `taskType` is now an optional scenario-level field (same four values) for scenarios that want to state their dominant activity explicitly (e.g. a scenario about fixing a broken pipeline should say `taskType: debug` even though most of its steps are `implement`-shaped repair work). When omitted, `scenarioTaskTypeOf()` (`lib/scenarios/scenario-task-type.ts`) derives it as the most frequent step kind, tie-broken by first occurrence — every existing scenario resolves correctly under this fallback with zero content changes required.
+
+**Current catalog distribution** (34 scenarios / 111 steps, as of this audit — includes the two new `manufacturing-defect-classifier`/`retail-demand-forecaster` ML scenarios):
+
+| Role | Scenarios | Step kinds |
+|---|---|---|
+| Backend | 9 | 100% `implement` |
+| Fullstack | 10 | 100% `implement` |
+| Machine Learning | 6 | 100% `implement` |
+| Frontend | 9 | `implement` (steps 1–2), then always `debug` → `explain`, with `refactor` replacing one slot in most scenarios |
+
+Only frontend scenarios use `debug`/`refactor`/`explain` today — not because the schema is frontend-specific (it isn't; `kind` is engine-agnostic and validated identically for every role), but because no backend/fullstack/ML scenario has been authored with a non-`implement` step yet. This is a **content gap, not a design constraint**.
+
+**Recommended distribution going forward** (guidance, not enforced by the schema validator):
+
+```text
+Implement:      ~40-55%
+Debug:          ~20-30%
+Refactor:       ~15-25%
+Explain/hybrid: ~5-15%
+```
+
+For the ML catalog specifically: the next ML scenario should be a `debug` scenario, not a third clean-slate `implement` build. A flawed fraud-detection/risk-scoring pipeline (target leakage, class-imbalance-blind accuracy-only evaluation, or an unshifted temporal feature) gives ML the same implement→debug progression frontend already has, and mirrors the mutation-style verification already proven out in `retail-demand-forecaster`. **Not authored as part of this task** — scoped out per instructions.
+
+### Explain support — what's real today
+
+Candidates *can* answer `explain`/discussion steps (their response is captured per-step as free text — via the voice conversation transcript, see `InterviewResult.steps[].response`), and there **is** a real evaluation path: `hooks/use-evaluation.ts` wires an `aiReviewScorer` (`lib/scenarios/evaluation/ai-scorer.ts`) into the runtime evaluation engine alongside the deterministic scorers. It calls the authenticated server action `gradeScenarioResponses` (`actions/scenario.ts`), which re-loads the scenario's authored rubric **server-side only** (never sent to the browser) and sends it plus the candidate's responses/transcript/workspace to an LLM (`buildScenarioGradingPrompt`, `server/ai/prompts/scenario-evaluation.ts`) for a JSON-scored review (0–100 quality + communication, strengths/improvements/next steps), cached 1h per input hash.
+
+This is a genuine LLM-graded rubric evaluation, not a keyword matcher — but it has real limitations worth stating plainly rather than overselling:
+
+- **No persistence / audit trail.** `useEvaluation` holds the report only in React state for the current session (`hooks/use-evaluation.ts:15-16`); there's no stored record of what the model scored or why, and no way to re-derive a past grade.
+- **No interviewer override.** The AI score is final for that session; there's no reviewer UI to adjust it.
+- **No documented determinism/reliability guarantee.** A single LLM call per attempt, degrading to "unavailable" on any failure (`ai-scorer.ts:48-53`) — there's no retry, no second-model cross-check, no eval harness proving score stability across repeated runs of the same transcript.
+- **Prompt-injection surface not specifically hardened.** Candidate-authored workspace content and transcript text are interpolated into the user message the model sees; there's no sanitization/escaping step beyond normal system/user role separation.
+
+Given this, `explain` should stay scoped to what it already covers well (discussion/reasoning steps graded holistically alongside automated correctness) rather than becoming the primary verification method for a step whose correctness *can* be checked automatically. Do not build a second, cheaper "keyword-matching" grader as a substitute — the real evaluator above is worth strengthening (persistence, audit trail, override) rather than working around.
+
 ## Verification
 
 Run these before shipping scenario or runtime changes:
